@@ -4,6 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>근무내역</title>
+  <script>
+    (function () {
+      var ua = navigator.userAgent || "";
+      if (!/kakaotalk/i.test(ua)) return;
+      var url = location.href.split("#")[0];
+      location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(url);
+      if (/android/i.test(ua)) {
+        setTimeout(function () {
+          var bare = url.replace(/^https?:\/\//i, "");
+          location.href = "intent://" + bare + "#Intent;scheme=https;package=com.android.chrome;end";
+        }, 700);
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #f3efe6;
