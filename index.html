@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>근무내역</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --surface: #fffdf8;
+      --fg: #1c1915;
+      --muted: #746c62;
+      --line: #e4dccf;
+      --primary: #1b6b45;
+      --primary-fg: #f7fbf8;
+      --tint: #e7f3ec;
+      --sun: #8c3d32;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    }
+    main { max-width: 32rem; margin: 0 auto; padding: 1.5rem 1rem 7rem; }
+    header { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
+    h1 { margin: 0; font-size: 1.5rem; }
+    .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
+    .month { display: flex; align-items: center; gap: 0.25rem; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0.25rem; }
+    .month p { min-width: 6rem; text-align: center; font-size: 0.875rem; font-weight: 600; margin: 0; }
+    button, input { font: inherit; }
+    .icon {
+      width: 2.75rem; height: 2.75rem; border: 0; background: transparent; border-radius: 999px; cursor: pointer;
+    }
+    label.field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
+    label.field span { font-size: 0.875rem; font-weight: 600; }
+    input[type="text"], input[type="tel"] {
+      height: 2.75rem; border: 1px solid var(--line); background: var(--surface); border-radius: 0.75rem; padding: 0 0.75rem;
+    }
+    .guide { font-size: 0.875rem; line-height: 1.5rem; margin: 0.75rem 0; }
+    .summary { font-size: 0.875rem; line-height: 1.5rem; color: var(--muted); margin: 0 0 0.75rem; }
+    .cal { border: 1px solid var(--line); background: var(--surface); border-radius: 1rem; padding: 0.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .wd { text-align: center; font-size: 0.75rem; font-weight: 600; padding: 0.5rem 0; color: var(--muted); }
+    .wd.sun { color: var(--sun); }
+    .day {
+      min-height: 5.5rem; border: 0; background: transparent; border-radius: 0.75rem; text-align: left;
+      padding: 0.35rem; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
+    }
+    .day.on { background: var(--tint); }
+    .day.today { box-shadow: inset 0 0 0 1px var(--primary); }
+    .day b { font-size: 0.875rem; }
+    .day b.sun { color: var(--sun); }
+    .day .type { color: var(--primary); font-size: 0.75rem; font-weight: 600; }
+    .day .sub { color: var(--muted); font-size: 0.7rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .send {
+      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 0 1rem 1rem;
+    }
+    .send button, .primary {
+      width: min(32rem, 100%); height: 3rem; border: 0; border-radius: 999px; background: var(--primary); color: var(--primary-fg);
+      font-weight: 600; cursor: pointer;
+    }
+    .sheet-bg { position: fixed; inset: 0; background: rgba(28, 25, 21, 0.4); display: flex; align-items: flex-end; justify-content: center; }
+    .sheet {
+      width: min(32rem, 100%); max-height: 100dvh; overflow: auto; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 1.5rem 1.5rem 0 0; padding: 1rem 1rem 1.5rem;
+    }
+    .sheet h2 { margin: 0; font-size: 1.125rem; }
+    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .choice, .hours {
+      width: 100%; min-height: 2.75rem; border: 1px solid var(--line); background: var(--surface); border-radius: 0.75rem;
+      text-align: left; padding: 0 0.75rem; margin-bottom: 0.5rem; cursor: pointer;
+    }
+    .choice.on { border-color: var(--primary); background: var(--tint); color: var(--primary); }
+    .hours { display: flex; align-items: center; justify-content: space-between; cursor: default; }
+    .hours input { width: 5rem; border: 0; background: transparent; text-align: right; font-weight: 600; }
+    .hours:disabled, .hours.off { opacity: 0.4; }
+    .confirm { width: 100%; height: 3rem; border: 0; border-radius: 0.75rem; background: var(--primary); color: var(--primary-fg); font-weight: 600; margin-top: 1rem; cursor: pointer; }
+    .confirm:disabled { opacity: 0.4; }
+    .ghost { width: 100%; height: 2.75rem; border: 0; background: transparent; color: var(--muted); margin-top: 0.5rem; cursor: pointer; }
+    .err { color: var(--sun); font-size: 0.875rem; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+    .actions button { height: 3rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; }
+    .kakao { border: 0; background: var(--primary); color: var(--primary-fg); }
+    .sms { border: 1px solid var(--line); background: var(--surface); }
+    img.preview { width: 100%; border: 1px solid var(--line); border-radius: 0.75rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="muted">점장에게 카톡·문자로 전송</p>
+        <h1>근무내역</h1>
+      </div>
+      <div class="month">
+        <button class="icon" id="prev" type="button" aria-label="이전달">‹</button>
+        <p id="month-label"></p>
+        <button class="icon" id="next" type="button" aria-label="다음달">›</button>
+      </div>
+    </header>
+    <label class="field"><span>점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
+    <p id="phone-error" class="err"></p>
+    <label class="field"><span>근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
+    <label class="field"><span>근무 시간대</span><input id="slot" type="text" placeholder="06시~12시"></label>
+    <p class="guide">월을 고르고, 날짜를 눌러 근무와 시간을 입력하세요.</p>
+    <p id="summary" class="summary"></p>
+    <section class="cal"><div id="cal" class="grid"></div></section>
+  </main>
+  <div class="send"><button id="open-send" type="button">달력 이미지로 전송</button></div>
+  <div id="day-sheet" class="sheet-bg hidden"></div>
+  <div id="send-sheet" class="sheet-bg hidden"></div>
+  <script>
+    const TYPES = [
+      { id: "edu", label: "2인 근무 교육", short: "교육" },
+      { id: "prob", label: "1인 근무 수습", short: "수습" },
+      { id: "full", label: "1인 근무 정식", short: "정식" },
+      { id: "sub", label: "대체근무", short: "대체" },
+      { id: "off", label: "휴무", short: "휴무" },
+    ];
+    const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+    const STORE_KEY = "work-log-v1";
+    const state = {
+      year: 2026,
+      month: 9,
+      phone: localStorage.getItem("work-log-manager-phone") || "",
+      worker: localStorage.getItem("work-log-worker-name") || "",
+      slot: localStorage.getItem("work-log-shift") || "",
+      store: {},
+      picked: null,
+      draft: null,
+    };
+    try { state.store = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch { state.store = {}; }
+    const today = new Date();
+    const todayKey = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
+
+    const phoneEl = document.getElementById("phone");
+    const workerEl = document.getElementById("worker");
+    const slotEl = document.getElementById("slot");
+    phoneEl.value = state.phone;
+    workerEl.value = state.worker;
+    slotEl.value = state.slot;
+
+    function save() {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state.store));
+      localStorage.setItem("work-log-manager-phone", state.phone);
+      localStorage.setItem("work-log-worker-name", state.worker);
+      localStorage.setItem("work-log-shift", state.slot);
+    }
+    function key() { return state.year + "-" + state.month; }
+    function days() { return state.store[key()] || {}; }
+    function meta(id) { return TYPES.find((item) => item.id === id); }
+    function eduRest(hours) {
+      if (hours <= 0) return 0;
+      return (hours <= 1 ? hours : hours - 1) * 10;
+    }
+    function formatRest(minutes) {
+      const total = Math.round(minutes);
+      const h = Math.floor(total / 60);
+      const m = total % 60;
+      if (h && m) return h + "시간 " + m + "분";
+      if (h) return h + "시간";
+      return m + "분";
+    }
+    function validPhone(phone) { return /^01\d{8,9}$/.test(phone.replace(/\D/g, "")); }
+
+    function render() {
+      document.getElementById("month-label").textContent = state.year + "년 " + state.month + "월";
+      const map = days();
+      const counts = { edu: 0, prob: 0, full: 0, sub: 0, off: 0 };
+      let extra = 0, short = 0, eduRestSum = 0;
+      Object.values(map).forEach((rec) => {
+        if (!rec || !rec.type) return;
+        counts[rec.type] += rec.hours || 0;
+        extra += rec.extra || 0;
+        short += rec.short || 0;
+        if (rec.type === "edu" && rec.hours != null) eduRestSum += eduRest(rec.hours);
+      });
+      let summary = "시간 " + TYPES.map((item) => item.short + " " + counts[item.id]).join(" · ");
+      if (extra || short) summary += " · 추가 " + extra + " · 단축 " + short;
+      if (eduRestSum) summary += " · 교육 휴게 " + formatRest(eduRestSum);
+      document.getElementById("summary").textContent = summary;
+
+      const lead = new Date(state.year, state.month - 1, 1).getDay();
+      const total = new Date(state.year, state.month, 0).getDate();
+      const cells = WEEK.map((label, index) => '<div class="wd' + (index === 0 ? " sun" : "") + '">' + label + "</div>").join("");
+      let body = "";
+      for (let i = 0; i < lead; i += 1) body += "<div></div>";
+      for (let day = 1; day <= total; day += 1) {
+        const rec = map[String(day)];
+        const wd = new Date(state.year, state.month - 1, day).getDay();
+        const isToday = todayKey === state.year + "-" + state.month + "-" + day;
+        let inner = '<b class="' + (wd === 0 ? "sun" : "") + '">' + day + "</b>";
+        if (rec) {
+          inner += '<span class="type">' + meta(rec.type).short + (rec.hours != null ? " " + rec.hours : "") + "</span>";
+          if (rec.type === "edu" && rec.hours != null) inner += '<span class="sub">휴게 ' + Math.round(eduRest(rec.hours)) + "분</span>";
+          if (rec.extra != null) inner += '<span class="sub">+' + rec.extra + "</span>";
+          if (rec.short != null) inner += '<span class="sub">-' + rec.short + "</span>";
+        }
+        body += '<button type="button" class="day' + (rec ? " on" : "") + (isToday ? " today" : "") + '" data-day="' + day + '">' + inner + "</button>";
+      }
+      document.getElementById("cal").innerHTML = cells + body;
+    }
+
+    document.getElementById("cal").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-day]");
+      if (!button) return;
+      openDay(Number(button.dataset.day));
+    });
+    document.getElementById("prev").onclick = () => shift(-1);
+    document.getElementById("next").onclick = () => shift(1);
+    function shift(delta) {
+      const next = new Date(state.year, state.month - 1 + delta, 1);
+      state.year = next.getFullYear();
+      state.month = next.getMonth() + 1;
+      render();
+    }
+    phoneEl.oninput = () => { state.phone = phoneEl.value; document.getElementById("phone-error").textContent = ""; save(); };
+    workerEl.oninput = () => { state.worker = workerEl.value; save(); };
+    slotEl.oninput = () => { state.slot = slotEl.value; save(); };
+
+    function openDay(day) {
+      const existing = days()[String(day)];
+      state.picked = day;
+      state.draft = existing
+        ? { type: existing.type, hours: existing.hours, extra: existing.extra, short: existing.short }
+        : { type: null, hours: null, extra: null, short: null };
+      drawDay();
+    }
+    function drawDay() {
+      const day = state.picked;
+      const draft = state.draft;
+      const wd = WEEK[new Date(state.year, state.month - 1, day).getDay()];
+      const choices = TYPES.map((item) => {
+        const on = draft.type === item.id;
+        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-type="' + item.id + '">' + item.label + "</button>";
+      }).join("");
+      const rest = draft.type === "edu" && draft.hours != null
+        ? '<p class="muted">휴게 ' + formatRest(eduRest(draft.hours)) + (draft.hours > 1 ? " · 마지막 1시간은 휴게 없음" : "") + "</p>"
+        : "";
+      document.getElementById("day-sheet").classList.remove("hidden");
+      document.getElementById("day-sheet").innerHTML =
+        '<div class="sheet" role="dialog">' +
+        '<div class="row"><h2>' + state.month + "월 " + day + "일 " + wd + '요일</h2><button class="icon" id="close-day" type="button" aria-label="닫기">✕</button></div>' +
+        '<p style="font-weight:600;font-size:.875rem">근무 유형 · 하나만</p>' + choices +
+        '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
+        rest +
+        '<p style="font-weight:600;font-size:.875rem">추가 선택 · 시간</p>' +
+        '<label class="hours' + (draft.type ? "" : " off") + '">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.extra ?? "") + '"></label>' +
+        '<label class="hours' + (draft.type ? "" : " off") + '">단축근무<input id="short" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.short ?? "") + '"></label>' +
+        '<button class="confirm" id="confirm" type="button"' + (draft.type ? "" : " disabled") + ">확인</button>" +
+        '<button class="ghost" id="clear" type="button">이 날짜 지우기</button></div>';
+      document.getElementById("close-day").onclick = closeDay;
+      document.getElementById("day-sheet").onclick = (event) => { if (event.target.id === "day-sheet") closeDay(); };
+      document.querySelectorAll("[data-type]").forEach((button) => {
+        button.onclick = () => { state.draft.type = button.dataset.type; drawDay(); };
+      });
+      bindHours("hours", "hours");
+      bindHours("extra", "extra");
+      bindHours("short", "short");
+      document.getElementById("confirm").onclick = confirmDay;
+      document.getElementById("clear").onclick = () => {
+        const map = { ...days() };
+        delete map[String(state.picked)];
+        state.store[key()] = map;
+        save();
+        closeDay();
+        render();
+      };
+    }
+    function bindHours(id, field) {
+      const input = document.getElementById(id);
+      input.oninput = () => {
+        const raw = input.value;
+        state.draft[field] = raw === "" ? null : Math.max(0, Number(raw));
+        if (field === "hours" && state.draft.type === "edu") drawDay();
+      };
+    }
+    function confirmDay() {
+      if (!state.draft.type) return;
+      const map = { ...days() };
+      map[String(state.picked)] = {
+        type: state.draft.type,
+        hours: state.draft.hours,
+        extra: state.draft.extra,
+        short: state.draft.short,
+        name: "",
+        slot: "",
+      };
+      state.store[key()] = map;
+      save();
+      closeDay();
+      render();
+    }
+    function closeDay() {
+      state.picked = null;
+      state.draft = null;
+      document.getElementById("day-sheet").classList.add("hidden");
+    }
+
+    function calendarBlob() {
+      const width = 780;
+      const pad = 24;
+      const lead = new Date(state.year, state.month - 1, 1).getDay();
+      const total = new Date(state.year, state.month, 0).getDate();
+      const rows = Math.ceil((lead + total) / 7);
+      const cellH = 118;
+      const weekH = 28;
+      const headerLines = ["점장 " + state.phone, state.worker ? "근무자 " + state.worker : "", state.slot ? "시간대 " + state.slot : ""].filter(Boolean);
+      const head = 48 + headerLines.length * 22;
+      const height = pad + head + weekH + rows * cellH + pad;
+      const canvas = document.createElement("canvas");
+      const scale = 2;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      const font = '"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
+      ctx.fillStyle = "#f3efe6";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#1c1915";
+      ctx.font = "600 28px " + font;
+      ctx.fillText(state.year + "년 " + state.month + "월 근무내역", pad, pad + 32);
+      ctx.fillStyle = "#746c62";
+      ctx.font = "500 16px " + font;
+      headerLines.forEach((line, index) => ctx.fillText(line, pad, pad + 58 + index * 22));
+      const gridTop = pad + head;
+      const cellW = (width - pad * 2) / 7;
+      ctx.font = "600 13px " + font;
+      ctx.textAlign = "center";
+      WEEK.forEach((label, i) => {
+        ctx.fillStyle = i === 0 ? "#8c3d32" : "#746c62";
+        ctx.fillText(label, pad + cellW * i + cellW / 2, gridTop + 16);
+      });
+      ctx.textAlign = "left";
+      const originY = gridTop + weekH;
+      roundRect(ctx, pad, originY, width - pad * 2, rows * cellH, 16);
+      ctx.fillStyle = "#fffdf8";
+      ctx.fill();
+      const map = days();
+      for (let index = 0; index < lead + total; index += 1) {
+        if (index < lead) continue;
+        const col = index % 7;
+        const row = Math.floor(index / 7);
+        const x = pad + col * cellW;
+        const y = originY + row * cellH;
+        const day = index - lead + 1;
+        const rec = map[String(day)];
+        if (rec) {
+          ctx.fillStyle = "#e7f3ec";
+          ctx.fillRect(x + 4, y + 4, cellW - 8, cellH - 8);
+        }
+        ctx.fillStyle = col === 0 ? "#8c3d32" : "#1c1915";
+        ctx.font = "600 16px " + font;
+        ctx.fillText(String(day), x + 8, y + 20);
+        if (!rec) continue;
+        ctx.fillStyle = "#1b6b45";
+        ctx.font = "600 12px " + font;
+        ctx.fillText(meta(rec.type).short + (rec.hours != null ? " " + rec.hours : ""), x + 8, y + 42);
+        let extraY = 60;
+        if (rec.type === "edu" && rec.hours != null) {
+          ctx.fillStyle = "#746c62";
+          ctx.font = "500 11px " + font;
+          ctx.fillText("휴게 " + Math.round(eduRest(rec.hours)) + "분", x + 8, y + 58);
+          extraY = 76;
+        }
+        ctx.font = "500 12px " + font;
+        if (rec.extra != null) {
+          ctx.fillStyle = "#1c1915";
+          ctx.fillText("+" + rec.extra, x + 8, y + extraY);
+        }
+        if (rec.short != null) {
+          ctx.fillStyle = "#746c62";
+          ctx.fillText("-" + rec.short, x + 8, y + extraY + (rec.extra != null ? 16 : 0));
+        }
+      }
+      return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    }
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    document.getElementById("open-send").onclick = async () => {
+      if (!validPhone(state.phone)) {
+        document.getElementById("phone-error").textContent = "점장 전화번호를 입력하세요.";
+        phoneEl.focus();
+        return;
+      }
+      const blob = await calendarBlob();
+      const url = URL.createObjectURL(blob);
+      const sheet = document.getElementById("send-sheet");
+      sheet.classList.remove("hidden");
+      sheet.innerHTML =
+        '<div class="sheet" role="dialog"><div class="row"><h2>' + state.year + "년 " + state.month + '월 전송</h2><button class="icon" id="close-send" type="button">✕</button></div>' +
+        '<p>받는 점장 ' + state.phone + "</p>" +
+        '<div style="max-height:16rem;overflow:auto"><img class="preview" alt="근무 달력" src="' + url + '"></div>' +
+        '<div class="actions"><button class="kakao" id="kakao" type="button">카카오톡</button><button class="sms" id="sms" type="button">문자</button></div>' +
+        '<p id="notice" class="muted"></p></div>';
+      document.getElementById("close-send").onclick = () => { sheet.classList.add("hidden"); URL.revokeObjectURL(url); };
+      sheet.onclick = (event) => { if (event.target.id === "send-sheet") document.getElementById("close-send").click(); };
+      async function share(channel) {
+        const file = new File([blob], state.year + "년" + state.month + "월-근무내역.png", { type: "image/png" });
+        const text = [state.worker && "근무자 " + state.worker, state.slot && "시간대 " + state.slot, "점장 " + state.phone + " " + state.year + "년 " + state.month + "월 근무내역"].filter(Boolean).join(" ");
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: text, text });
+            document.getElementById("notice").textContent = channel === "kakao" ? "공유 창에서 카카오톡을 고르세요." : "공유 창에서 문자를 고르세요.";
+            return;
+          } catch (error) {
+            if (error && error.name === "AbortError") return;
+          }
+        }
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        link.click();
+        document.getElementById("notice").textContent = "달력 이미지를 저장했습니다. 카카오톡이나 문자에 첨부해 보내세요.";
+      }
+      document.getElementById("kakao").onclick = () => share("kakao");
+      document.getElementById("sms").onclick = () => share("sms");
+    };
+    render();
+  </script>
+</body>
+</html>
