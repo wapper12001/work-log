@@ -118,7 +118,10 @@
     <p class="guide">아래 달력에서 날짜를 눌러 근무와 시간을 입력하세요.</p>
     <label class="field"><span>점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
     <p id="phone-error" class="err"></p>
-    <label class="field"><span>근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
+    <div style="display:grid;grid-template-columns:1fr 7.5rem;gap:.5rem">
+      <label class="field"><span>근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
+      <label class="field"><span>근무 개월</span><input id="months" type="number" min="0" step="1" inputmode="numeric" placeholder="개월"></label>
+    </div>
     <label class="field"><span>근무 시간대</span><input id="slot" type="text" placeholder="06시~12시"></label>
     <button id="reset-all" class="reset" type="button">전체 새로고침</button>
     <p id="summary" class="summary"></p>
@@ -142,6 +145,7 @@
       month: 9,
       phone: localStorage.getItem("work-log-manager-phone") || "",
       worker: localStorage.getItem("work-log-worker-name") || "",
+      months: Number(localStorage.getItem("work-log-worker-months")) || 0,
       slot: localStorage.getItem("work-log-shift") || "",
       store: {},
       picked: null,
@@ -153,15 +157,18 @@
 
     const phoneEl = document.getElementById("phone");
     const workerEl = document.getElementById("worker");
+    const monthsEl = document.getElementById("months");
     const slotEl = document.getElementById("slot");
     phoneEl.value = state.phone;
     workerEl.value = state.worker;
+    monthsEl.value = state.months || "";
     slotEl.value = state.slot;
 
     function save() {
       localStorage.setItem(STORE_KEY, JSON.stringify(state.store));
       localStorage.setItem("work-log-manager-phone", state.phone);
       localStorage.setItem("work-log-worker-name", state.worker);
+      localStorage.setItem("work-log-worker-months", String(state.months));
       localStorage.setItem("work-log-shift", state.slot);
     }
     function key() { return state.year + "-" + state.month; }
@@ -234,6 +241,11 @@
     }
     phoneEl.oninput = () => { state.phone = phoneEl.value; document.getElementById("phone-error").textContent = ""; save(); };
     workerEl.oninput = () => { state.worker = workerEl.value; save(); };
+    monthsEl.oninput = () => {
+      const next = Number(monthsEl.value);
+      state.months = Number.isFinite(next) && next > 0 ? Math.floor(next) : 0;
+      save();
+    };
     slotEl.oninput = () => { state.slot = slotEl.value; save(); };
 
     function openDay(day) {
@@ -323,7 +335,7 @@
       const rows = Math.ceil((lead + total) / 7);
       const cellH = 118;
       const weekH = 28;
-      const headerLines = ["점장 " + state.phone, state.worker ? "근무자 " + state.worker : "", state.slot ? "시간대 " + state.slot : ""].filter(Boolean);
+      const headerLines = ["점장 " + state.phone, state.worker ? "근무자 " + state.worker + (state.months ? " " + state.months + "개월차" : "") : "", state.slot ? "시간대 " + state.slot : ""].filter(Boolean);
       const statement = payLines();
       const head = 48 + headerLines.length * 22;
       const foot = 36 + statement.length * 22;
@@ -459,26 +471,23 @@
       return { lines, total };
     }
     function trunc10(value) { return Math.floor(Math.max(0, value) / 10) * 10; }
-    function takeHome(gross) {
+    function takeHome(gross, months) {
       const base = Math.max(0, Math.round(gross));
-      const pension = trunc10(Math.floor(base / 1000) * 1000 * 0.0475);
-      const health = trunc10(base * 0.03595);
-      const care = trunc10(health * (0.9448 / 7.19));
-      const employment = trunc10(base * 0.009);
+      const employment = months >= 4 ? trunc10(base * 0.009) : 0;
       const income = base <= 2000000 ? 0 : trunc10((base - 2000000) * 0.04);
       const local = trunc10(income * 0.1);
-      return { pension, health, care, employment, income, local, net: base - (pension + health + care + employment + income + local) };
+      return { employment, income, local, insured: months >= 4, net: base - (employment + income + local) };
     }
     function payLines() {
       const pay = calcGross(days());
-      const take = takeHome(pay.total);
+      const take = takeHome(pay.total, state.months);
       const won = (value) => value.toLocaleString("ko-KR") + "원";
-      return pay.lines.map((line) => line[0] + " " + won(line[2])).concat([
+      return [state.months + "개월차"].concat(pay.lines.map((line) => line[0] + " " + won(line[2]))).concat([
         "세전 " + won(pay.total),
-        "국민연금 " + won(take.pension),
-        "건강보험 " + won(take.health),
-        "장기요양 " + won(take.care),
-        "고용보험 " + won(take.employment),
+        "국민연금 해당없음",
+        "건강보험 해당없음",
+        "장기요양 해당없음",
+        take.insured ? "고용보험 " + won(take.employment) : "고용보험 해당없음",
         "소득세 " + won(take.income),
         "지방소득세 " + won(take.local),
         "세후 " + won(take.net),
@@ -486,24 +495,24 @@
     }
     function showPay() {
       const pay = calcGross(days());
-      const take = takeHome(pay.total);
+      const take = takeHome(pay.total, state.months);
       const won = (value) => value.toLocaleString("ko-KR") + "원";
       const rows = pay.lines.map((line) =>
         '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0">' + won(line[2]) + "</p></div>"
       ).join("");
       const cuts = [
-        ["국민연금", take.pension],
-        ["건강보험", take.health],
-        ["장기요양", take.care],
-        ["고용보험", take.employment],
-        ["소득세", take.income],
-        ["지방소득세", take.local],
-      ].map((item) => '<p class="row"><span>' + item[0] + "</span><span>-" + won(item[1]) + "</span></p>").join("");
+        ["국민연금", "해당없음"],
+        ["건강보험", "해당없음"],
+        ["장기요양", "해당없음"],
+        ["고용보험", take.insured ? "-" + won(take.employment) : "해당없음"],
+        ["소득세", "-" + won(take.income)],
+        ["지방소득세", "-" + won(take.local)],
+      ].map((item) => '<p class="row"><span>' + item[0] + "</span><span>" + item[1] + "</span></p>").join("");
       const sheet = document.getElementById("send-sheet");
       sheet.classList.remove("hidden");
       sheet.innerHTML =
         '<div class="sheet" role="dialog"><div class="row"><h2>' + state.month + '월 급여</h2><button class="icon" id="close-pay" type="button">✕</button></div>' +
-        '<p class="muted">2026년 근로자 부담 예상. 산재는 점장 부담. 이 내용이 톡에도 들어갑니다.</p>' +
+        '<p class="muted">' + state.months + '개월차. 고용보험은 4개월차부터. 국민연금·건강보험·장기요양은 빼지 않습니다.</p>' +
         rows +
         '<p class="row" style="font-weight:700"><span>세전</span><span>' + won(pay.total) + "</span></p>" +
         cuts +
@@ -531,7 +540,7 @@
       sheet.onclick = (event) => { if (event.target.id === "send-sheet") document.getElementById("close-send").click(); };
       async function share(channel) {
         const file = new File([blob], state.year + "년" + state.month + "월-근무내역.png", { type: "image/png" });
-        const text = [state.worker && "근무자 " + state.worker, state.slot && "시간대 " + state.slot, state.year + "년 " + state.month + "월 급여", payLines().join("\n")].filter(Boolean).join("\n");
+        const text = [state.worker && "근무자 " + state.worker + " " + state.months + "개월차", state.slot && "시간대 " + state.slot, state.year + "년 " + state.month + "월 급여", payLines().join("\n")].filter(Boolean).join("\n");
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: text, text });
