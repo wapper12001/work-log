@@ -324,8 +324,10 @@
       const cellH = 118;
       const weekH = 28;
       const headerLines = ["점장 " + state.phone, state.worker ? "근무자 " + state.worker : "", state.slot ? "시간대 " + state.slot : ""].filter(Boolean);
+      const statement = payLines();
       const head = 48 + headerLines.length * 22;
-      const height = pad + head + weekH + rows * cellH + pad;
+      const foot = 36 + statement.length * 22;
+      const height = pad + head + weekH + rows * cellH + foot + pad;
       const canvas = document.createElement("canvas");
       const scale = 2;
       canvas.width = width * scale;
@@ -391,6 +393,13 @@
           ctx.fillText("-" + rec.short, x + 8, y + extraY + (rec.extra != null ? 16 : 0));
         }
       }
+      const payTop = originY + rows * cellH + 28;
+      statement.forEach((line, index) => {
+        const strong = line.indexOf("세전") === 0 || line.indexOf("세후") === 0;
+        ctx.fillStyle = strong ? "#1b6b45" : "#1c1915";
+        ctx.font = (strong ? "700 " : "500 ") + "16px " + font;
+        ctx.fillText(line, pad, payTop + index * 22);
+      });
       return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
     }
     function roundRect(ctx, x, y, w, h, r) {
@@ -449,18 +458,56 @@
       const total = lines.reduce((sum, line) => sum + line[2], 0);
       return { lines, total };
     }
+    function trunc10(value) { return Math.floor(Math.max(0, value) / 10) * 10; }
+    function takeHome(gross) {
+      const base = Math.max(0, Math.round(gross));
+      const pension = trunc10(Math.floor(base / 1000) * 1000 * 0.0475);
+      const health = trunc10(base * 0.03595);
+      const care = trunc10(health * (0.9448 / 7.19));
+      const employment = trunc10(base * 0.009);
+      const income = base <= 2000000 ? 0 : trunc10((base - 2000000) * 0.04);
+      const local = trunc10(income * 0.1);
+      return { pension, health, care, employment, income, local, net: base - (pension + health + care + employment + income + local) };
+    }
+    function payLines() {
+      const pay = calcGross(days());
+      const take = takeHome(pay.total);
+      const won = (value) => value.toLocaleString("ko-KR") + "원";
+      return pay.lines.map((line) => line[0] + " " + won(line[2])).concat([
+        "세전 " + won(pay.total),
+        "국민연금 " + won(take.pension),
+        "건강보험 " + won(take.health),
+        "장기요양 " + won(take.care),
+        "고용보험 " + won(take.employment),
+        "소득세 " + won(take.income),
+        "지방소득세 " + won(take.local),
+        "세후 " + won(take.net),
+      ]);
+    }
     function showPay() {
       const pay = calcGross(days());
+      const take = takeHome(pay.total);
+      const won = (value) => value.toLocaleString("ko-KR") + "원";
       const rows = pay.lines.map((line) =>
-        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0">' + line[2].toLocaleString("ko-KR") + "원</p></div>"
+        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0">' + won(line[2]) + "</p></div>"
       ).join("");
+      const cuts = [
+        ["국민연금", take.pension],
+        ["건강보험", take.health],
+        ["장기요양", take.care],
+        ["고용보험", take.employment],
+        ["소득세", take.income],
+        ["지방소득세", take.local],
+      ].map((item) => '<p class="row"><span>' + item[0] + "</span><span>-" + won(item[1]) + "</span></p>").join("");
       const sheet = document.getElementById("send-sheet");
       sheet.classList.remove("hidden");
       sheet.innerHTML =
-        '<div class="sheet" role="dialog"><div class="row"><h2>' + state.month + '월 세전 급여</h2><button class="icon" id="close-pay" type="button">✕</button></div>' +
-        '<p class="muted">시급 10,320원 · 수습 9,288원(90%). 주휴수당은 포함하지 않습니다.</p>' +
-        (rows || '<p>이번 달 근무시간이 없습니다.</p>') +
-        '<p class="row" style="font-weight:700"><span>세전 합계</span><span>' + pay.total.toLocaleString("ko-KR") + "원</span></p></div>";
+        '<div class="sheet" role="dialog"><div class="row"><h2>' + state.month + '월 급여</h2><button class="icon" id="close-pay" type="button">✕</button></div>' +
+        '<p class="muted">2026년 근로자 부담 예상. 산재는 점장 부담. 이 내용이 톡에도 들어갑니다.</p>' +
+        rows +
+        '<p class="row" style="font-weight:700"><span>세전</span><span>' + won(pay.total) + "</span></p>" +
+        cuts +
+        '<p class="row" style="font-weight:700;color:var(--primary)"><span>세후</span><span>' + won(take.net) + "</span></p></div>";
       document.getElementById("close-pay").onclick = () => sheet.classList.add("hidden");
       sheet.onclick = (event) => { if (event.target.id === "send-sheet") sheet.classList.add("hidden"); };
     }
@@ -484,7 +531,7 @@
       sheet.onclick = (event) => { if (event.target.id === "send-sheet") document.getElementById("close-send").click(); };
       async function share(channel) {
         const file = new File([blob], state.year + "년" + state.month + "월-근무내역.png", { type: "image/png" });
-        const text = [state.worker && "근무자 " + state.worker, state.slot && "시간대 " + state.slot, "점장 " + state.phone + " " + state.year + "년 " + state.month + "월 근무내역"].filter(Boolean).join(" ");
+        const text = [state.worker && "근무자 " + state.worker, state.slot && "시간대 " + state.slot, state.year + "년 " + state.month + "월 급여", payLines().join("\n")].filter(Boolean).join("\n");
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: text, text });
