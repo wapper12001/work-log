@@ -93,6 +93,7 @@
     .choice.on { border-color: var(--primary); background: var(--tint); color: var(--primary); }
     .hours { display: flex; align-items: center; justify-content: space-between; cursor: default; }
     .hours input { width: 5rem; border: 0; background: transparent; text-align: right; font-weight: 600; }
+    #hours { width: 12rem; font-weight: 400; }
     .hours:disabled, .hours.off { opacity: 0.4; }
     .confirm { width: 100%; height: 3rem; border: 0; border-radius: 0.75rem; background: var(--primary); color: var(--primary-fg); font-weight: 600; margin-top: 1rem; cursor: pointer; }
     .confirm:disabled { opacity: 0.4; }
@@ -263,8 +264,8 @@
       document.getElementById("day-sheet").innerHTML =
         '<div class="sheet" role="dialog">' +
         '<div class="row"><h2>' + state.month + "월 " + day + "일 " + wd + '요일</h2><button class="icon" id="close-day" type="button" aria-label="닫기">✕</button></div>' +
-        '<p style="font-weight:600;font-size:.875rem">근무 유형 · 하나만</p>' + choices +
-        '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
+        '<p style="font-weight:600;font-size:.875rem">근무 유형 하나만 선택</p>' + choices +
+        '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="근무시간을 적으세요" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
         rest +
         '<p style="font-weight:600;font-size:.875rem">추가 선택 · 시간</p>' +
         '<label class="hours' + (draft.type ? "" : " off") + '">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.extra ?? "") + '"></label>' +
