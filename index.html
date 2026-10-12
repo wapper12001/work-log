@@ -37,7 +37,7 @@
       color: var(--fg);
       font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
     }
-    main { max-width: 32rem; margin: 0 auto; padding: 1.5rem 1rem 7rem; }
+    main { max-width: 32rem; margin: 0 auto; padding: 1.5rem 1rem 10rem; }
     header { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
     h1 { margin: 0; font-size: 1.5rem; }
     .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
@@ -69,11 +69,15 @@
     .day .type { color: var(--primary); font-size: 0.75rem; font-weight: 600; }
     .day .sub { color: var(--muted); font-size: 0.7rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .send {
-      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 0 1rem 1rem;
+      position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0 1rem 1rem;
     }
-    .send button, .primary {
+    .send #open-send, .primary {
       width: min(32rem, 100%); height: 3rem; border: 0; border-radius: 999px; background: var(--primary); color: var(--primary-fg);
       font-weight: 600; cursor: pointer;
+    }
+    .reset {
+      width: min(32rem, 100%); height: 2.75rem; border: 1px solid var(--line); border-radius: 999px;
+      background: var(--surface); color: var(--fg); font-weight: 600; cursor: pointer;
     }
     .sheet-bg { position: fixed; inset: 0; background: rgba(28, 25, 21, 0.4); display: flex; align-items: flex-end; justify-content: center; }
     .sheet {
@@ -123,7 +127,10 @@
     <p id="summary" class="summary"></p>
     <section class="cal"><div id="cal" class="grid"></div></section>
   </main>
-  <div class="send"><button id="open-send" type="button">달력 이미지로 전송</button></div>
+  <div class="send">
+    <button id="reset-all" class="reset" type="button">전체 새로고침</button>
+    <button id="open-send" type="button">달력 이미지로 전송</button>
+  </div>
   <div id="day-sheet" class="sheet-bg hidden"></div>
   <div id="send-sheet" class="sheet-bg hidden"></div>
   <script>
@@ -402,6 +409,16 @@
       ctx.closePath();
     }
 
+    document.getElementById("reset-all").onclick = () => {
+      if (!confirm("입력한 근무내역을 모두 지울까요?")) return;
+      state.store = {};
+      state.picked = null;
+      state.draft = null;
+      document.getElementById("day-sheet").classList.add("hidden");
+      document.getElementById("send-sheet").classList.add("hidden");
+      save();
+      render();
+    };
     document.getElementById("open-send").onclick = async () => {
       if (!validPhone(state.phone)) {
         document.getElementById("phone-error").textContent = "점장 전화번호를 입력하세요.";
