@@ -418,6 +418,57 @@
       save();
       render();
     };
+    function won(minutes, wage) { return Math.round((minutes / 60) * wage); }
+    function formatMinutes(minutes) {
+      const total = Math.max(0, Math.round(minutes));
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+      if (hours && mins) return hours + "시간 " + mins + "분";
+      if (hours) return hours + "시간";
+      return mins + "분";
+    }
+    function calcGross(map) {
+      const base = 10320;
+      const probation = 9288;
+      let eduMin = 0, eduRestSum = 0, probMin = 0, fullMin = 0, subMin = 0, extraMin = 0, shortMin = 0;
+      Object.values(map).forEach((rec) => {
+        if (!rec || !rec.type) return;
+        const minutes = Math.round((rec.hours || 0) * 60);
+        if (rec.type === "edu") {
+          eduMin += minutes;
+          if ((rec.hours || 0) > 0) eduRestSum += eduRest(rec.hours);
+        } else if (rec.type === "prob") probMin += minutes;
+        else if (rec.type === "full") fullMin += minutes;
+        else if (rec.type === "sub") subMin += minutes;
+        extraMin += Math.round((rec.extra || 0) * 60);
+        shortMin += Math.round((rec.short || 0) * 60);
+      });
+      const lines = [];
+      const eduPaid = Math.max(0, eduMin - eduRestSum);
+      if (eduPaid > 0) lines.push(["2인 근무 교육", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
+      if (probMin > 0) lines.push(["1인 근무 수습", formatMinutes(probMin) + " · 수습 9,288원", won(probMin, probation)]);
+      if (fullMin > 0) lines.push(["1인 근무 정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base)]);
+      if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base)]);
+      if (extraMin > 0) lines.push(["추가근무", formatMinutes(extraMin) + " · 시급 10,320원", won(extraMin, base)]);
+      if (shortMin > 0) lines.push(["단축근무", formatMinutes(shortMin) + " · 시급 10,320원", -won(shortMin, base)]);
+      const total = lines.reduce((sum, line) => sum + line[2], 0);
+      return { lines, total };
+    }
+    function showPay() {
+      const pay = calcGross(days());
+      const rows = pay.lines.map((line) =>
+        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + "</p></div><p style="font-weight:600;margin:0">' + line[2].toLocaleString("ko-KR") + "원</p></div>"
+      ).join("");
+      const sheet = document.getElementById("send-sheet");
+      sheet.classList.remove("hidden");
+      sheet.innerHTML =
+        '<div class="sheet" role="dialog"><div class="row"><h2>' + state.month + '월 세전 급여</h2><button class="icon" id="close-pay" type="button">✕</button></div>' +
+        '<p class="muted">시급 10,320원 · 수습 9,288원(90%). 주휴수당은 포함하지 않습니다.</p>' +
+        (rows || '<p>이번 달 근무시간이 없습니다.</p>') +
+        '<p class="row" style="font-weight:700"><span>세전 합계</span><span>' + pay.total.toLocaleString("ko-KR") + "원</span></p></div>";
+      document.getElementById("close-pay").onclick = () => sheet.classList.add("hidden");
+      sheet.onclick = (event) => { if (event.target.id === "send-sheet") sheet.classList.add("hidden"); };
+    }
     document.getElementById("open-send").onclick = async () => {
       if (!validPhone(state.phone)) {
         document.getElementById("phone-error").textContent = "점장 전화번호를 입력하세요.";
@@ -442,7 +493,7 @@
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: text, text });
-            document.getElementById("notice").textContent = channel === "kakao" ? "공유 창에서 카카오톡을 고르세요." : "공유 창에서 문자를 고르세요.";
+            showPay();
             return;
           } catch (error) {
             if (error && error.name === "AbortError") return;
@@ -452,7 +503,7 @@
         link.href = url;
         link.download = file.name;
         link.click();
-        document.getElementById("notice").textContent = "달력 이미지를 저장했습니다. 카카오톡이나 문자에 첨부해 보내세요.";
+        showPay();
       }
       document.getElementById("kakao").onclick = () => share("kakao");
       document.getElementById("sms").onclick = () => share("sms");
