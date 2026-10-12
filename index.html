@@ -452,7 +452,7 @@
     function showPay() {
       const pay = calcGross(days());
       const rows = pay.lines.map((line) =>
-        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + "</p></div><p style="font-weight:600;margin:0">' + line[2].toLocaleString("ko-KR") + "원</p></div>"
+        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0">' + line[2].toLocaleString("ko-KR") + "원</p></div>"
       ).join("");
       const sheet = document.getElementById("send-sheet");
       sheet.classList.remove("hidden");
