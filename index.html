@@ -49,10 +49,45 @@
     }
     label.field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
     label.field span { font-size: 0.875rem; font-weight: 600; }
-    input[type="text"], input[type="tel"] {
-      height: 2.75rem; border: 1px solid var(--line); background: var(--surface); border-radius: 0.75rem; padding: 0 0.75rem;
+    .guide, .notice {
+      margin: 0.35rem 0 0.6rem; padding: 0.55rem 0.7rem; border-radius: 0.75rem;
+      background: #8c3d32; color: #fffdf8; font-size: 0.95rem; font-weight: 700; line-height: 1.35;
     }
-    .guide { font-size: 0.875rem; line-height: 1.5rem; margin: 0.75rem 0; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    input[type="text"], input[type="tel"], input[type="number"] {
+      height: 2.75rem; border: 1px solid var(--line); background: var(--surface); border-radius: 0.75rem; padding: 0 0.75rem; width: 100%;
+    }
+    .sec { border-radius: 0.9rem; padding: 0.65rem 0.7rem 0.2rem; margin-bottom: 0.55rem; }
+    .sec h3 { margin: 0 0 0.45rem; font-size: 0.95rem; }
+    .sec.type { background: #e7f3ec; border: 2px solid #1b6b45; }
+    .sec.type h3 { color: #145c38; }
+    .sec.time { background: #fff4d6; border: 2px solid #9a6b12; }
+    .sec.time h3 { color: #7a5208; }
+    .sec.extra { background: #f8e8e4; border: 2px solid #8c3d32; }
+    .sec.extra h3 { color: #8c3d32; }
+    .day-grid { display: grid; gap: 0.5rem; }
+    @media (orientation: landscape) and (max-height: 520px) {
+      main {
+        max-width: none; display: grid;
+        grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+        column-gap: 0.7rem; padding: 0.4rem 0.55rem 3.6rem; align-items: start;
+      }
+      header, .month, .topfields, .notice, .reset, .summary { grid-column: 1; }
+      .cal { grid-column: 2; grid-row: 1 / span 12; margin: 0; }
+      header { margin-bottom: 0.25rem; }
+      h1 { font-size: 1.15rem; }
+      header .muted { display: none; }
+      .month { margin-bottom: 0.3rem; }
+      .icon { width: 2.1rem; height: 2.1rem; }
+      label.field { margin-bottom: 0.25rem; }
+      input[type="text"], input[type="tel"], input[type="number"] { height: 2.15rem; }
+      .day { min-height: 2.35rem; padding: 0.15rem; }
+      .wd { padding: 0.2rem 0; }
+      .reset { height: 2.2rem; margin-bottom: 0.35rem; }
+      .sheet { width: min(52rem, 100%); }
+      .day-grid { grid-template-columns: 1fr 1fr; }
+      .choice, .hours { min-height: 2.2rem; margin-bottom: 0.35rem; }
+    }
     .summary { font-size: 0.875rem; line-height: 1.5rem; color: var(--muted); margin: 0 0 0.75rem; }
     .cal { border: 1px solid var(--line); background: var(--surface); border-radius: 1rem; padding: 0.5rem; margin: 0 0 0.75rem; }
     .grid { display: grid; grid-template-columns: repeat(7, 1fr); }
@@ -115,14 +150,16 @@
       <p id="month-label">2026년 9월</p>
       <button class="icon" id="next" type="button" aria-label="다음달">›</button>
     </div>
-    <p class="guide">아래 달력에서 날짜를 눌러 근무와 시간을 입력하세요.</p>
-    <label class="field"><span>점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
-    <p id="phone-error" class="err"></p>
-    <div style="display:grid;grid-template-columns:1fr 7.5rem;gap:.5rem">
+    <p class="notice">※ 달력에서 날짜와 근무 시간대를 입력하세요</p>
+    <div class="topfields">
+      <label class="field"><span>점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
+      <p id="phone-error" class="err"></p>
       <label class="field"><span>근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
-      <label class="field"><span>근무 개월</span><input id="months" type="number" min="0" step="1" inputmode="numeric" placeholder="개월"></label>
+      <div class="pair">
+        <label class="field"><span>근무개월수</span><input id="months" type="number" min="0" step="1" inputmode="numeric" placeholder="개월"></label>
+        <label class="field"><span>근무시간대</span><input id="slot" type="text" placeholder="06시~12시"></label>
+      </div>
     </div>
-    <label class="field"><span>근무 시간대</span><input id="slot" type="text" placeholder="06시~12시"></label>
     <button id="reset-all" class="reset" type="button">전체 새로고침</button>
     <p id="summary" class="summary"></p>
     <section class="cal"><div id="cal" class="grid"></div></section>
@@ -271,12 +308,15 @@
       document.getElementById("day-sheet").innerHTML =
         '<div class="sheet" role="dialog">' +
         '<div class="row"><h2>' + state.month + "월 " + day + "일 " + wd + '요일</h2><button class="icon" id="close-day" type="button" aria-label="닫기">✕</button></div>' +
-        '<p style="font-weight:600;font-size:.875rem">근무 유형 하나만 선택</p>' + choices +
+        '<div class="day-grid">' +
+        '<section class="sec type"><h3>근무 유형 하나만 선택</h3>' + choices + '</section>' +
+        '<div><section class="sec time"><h3>근무 시간 입력</h3>' +
         '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="근무시간을 적으세요" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
-        rest +
-        '<p style="font-weight:600;font-size:.875rem">추가 선택 · 시간</p>' +
+        rest + '</section>' +
+        '<section class="sec extra"><h3>추가 선택 시간</h3>' +
         '<label class="hours' + (draft.type ? "" : " off") + '">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.extra ?? "") + '"></label>' +
         '<label class="hours' + (draft.type ? "" : " off") + '">단축근무<input id="short" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.short ?? "") + '"></label>' +
+        '</section></div></div>' +
         '<button class="confirm" id="confirm" type="button"' + (draft.type ? "" : " disabled") + ">확인</button>" +
         '<button class="ghost" id="clear" type="button">이 날짜 지우기</button></div>';
       document.getElementById("close-day").onclick = closeDay;
