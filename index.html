@@ -147,7 +147,7 @@
     </header>
     <div class="month">
       <button class="icon" id="prev" type="button" aria-label="이전달">‹</button>
-      <p id="month-label">2026년 9월</p>
+      <p id="month-label"></p>
       <button class="icon" id="next" type="button" aria-label="다음달">›</button>
     </div>
     <p class="notice">※ 달력에서 날짜와 근무 시간대를 입력하세요</p>
@@ -176,9 +176,10 @@
     ];
     const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
     const STORE_KEY = "work-log-v1";
+    const now = new Date();
     const state = {
-      year: 2026,
-      month: 9,
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
       phone: localStorage.getItem("work-log-manager-phone") || "",
       worker: localStorage.getItem("work-log-worker-name") || "",
       months: Number(localStorage.getItem("work-log-worker-months")) || 0,
