@@ -64,7 +64,7 @@
     .sec.time { background: #fff4d6; border: 2px solid #9a6b12; }
     .sec.time h3 { color: #7a5208; }
     .sec.extra { background: #f8e8e4; border: 2px solid #8c3d32; }
-    .sec.extra h3 { color: #8c3d32; }
+    .sec.extra .choice.on { border-color: #8c3d32; background: #fffdf8; color: #8c3d32; }
     .day-grid { display: grid; gap: 0.5rem; }
     @media (orientation: landscape) and (max-height: 520px) {
       main {
@@ -173,7 +173,6 @@
       { id: "prob", label: "1인 근무 수습", short: "수습" },
       { id: "full", label: "1인 근무 정식", short: "정식" },
       { id: "sub", label: "대체근무", short: "대체" },
-      { id: "off", label: "휴무", short: "휴무" },
     ];
     const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
     const STORE_KEY = "work-log-v1";
@@ -209,7 +208,30 @@
       localStorage.setItem("work-log-shift", state.slot);
     }
     function key() { return state.year + "-" + state.month; }
-    function days() { return state.store[key()] || {}; }
+    function cleanRec(rec) {
+      if (!rec || typeof rec !== "object") return null;
+      const type = TYPES.some((item) => item.id === rec.type) ? rec.type : null;
+      const late = !!rec.late;
+      const absent = !!rec.absent;
+      const off = !!rec.off || rec.type === "off";
+      const hours = rec.hours == null || rec.hours === "" ? null : Number(rec.hours);
+      const extra = rec.extra == null || rec.extra === "" ? null : Number(rec.extra);
+      const short = rec.short == null || rec.short === "" ? null : Number(rec.short);
+      if (!type && !late && !absent && !off && extra == null && short == null) return null;
+      return { type, hours, extra, short, late, absent, off };
+    }
+    function marks(rec) {
+      return [rec.late ? "지각" : "", rec.absent ? "결근" : "", rec.off ? "휴무" : ""].filter(Boolean).join(" ");
+    }
+    function days() {
+      const raw = state.store[key()] || {};
+      const next = {};
+      Object.entries(raw).forEach(([day, rec]) => {
+        const clean = cleanRec(rec);
+        if (clean) next[day] = clean;
+      });
+      return next;
+    }
     function meta(id) { return TYPES.find((item) => item.id === id); }
     function eduRest(hours) {
       if (hours <= 0) return 0;
@@ -228,18 +250,22 @@
     function render() {
       document.getElementById("month-label").textContent = state.year + "년 " + state.month + "월";
       const map = days();
-      const counts = { edu: 0, prob: 0, full: 0, sub: 0, off: 0 };
-      let extra = 0, short = 0, eduRestSum = 0;
+      const counts = { edu: 0, prob: 0, full: 0, sub: 0 };
+      let extra = 0, short = 0, eduRestSum = 0, late = 0, absent = 0, off = 0;
       Object.values(map).forEach((rec) => {
-        if (!rec || !rec.type) return;
-        counts[rec.type] += rec.hours || 0;
+        if (!rec) return;
+        if (rec.type) counts[rec.type] += rec.hours || 0;
         extra += rec.extra || 0;
         short += rec.short || 0;
         if (rec.type === "edu" && rec.hours != null) eduRestSum += eduRest(rec.hours);
+        if (rec.late) late += 1;
+        if (rec.absent) absent += 1;
+        if (rec.off) off += 1;
       });
       let summary = "시간 " + TYPES.map((item) => item.short + " " + counts[item.id]).join(" · ");
       if (extra || short) summary += " · 추가 " + extra + " · 단축 " + short;
       if (eduRestSum) summary += " · 교육 휴게 " + formatRest(eduRestSum);
+      if (late || absent || off) summary += " · 지각 " + late + " · 결근 " + absent + " · 휴무 " + off;
       document.getElementById("summary").textContent = summary;
 
       const lead = new Date(state.year, state.month - 1, 1).getDay();
@@ -253,8 +279,9 @@
         const isToday = todayKey === state.year + "-" + state.month + "-" + day;
         let inner = '<b class="' + (wd === 0 ? "sun" : "") + '">' + day + "</b>";
         if (rec) {
-          inner += '<span class="type">' + meta(rec.type).short + (rec.hours != null ? " " + rec.hours : "") + "</span>";
+          if (rec.type) inner += '<span class="type">' + meta(rec.type).short + (rec.hours != null ? " " + rec.hours : "") + "</span>";
           if (rec.type === "edu" && rec.hours != null) inner += '<span class="sub">휴게 ' + Math.round(eduRest(rec.hours)) + "분</span>";
+          if (marks(rec)) inner += '<span class="sub" style="color:#8c3d32;font-weight:700">' + marks(rec) + "</span>";
           if (rec.extra != null) inner += '<span class="sub">+' + rec.extra + "</span>";
           if (rec.short != null) inner += '<span class="sub">-' + rec.short + "</span>";
         }
@@ -289,8 +316,8 @@
       const existing = days()[String(day)];
       state.picked = day;
       state.draft = existing
-        ? { type: existing.type, hours: existing.hours, extra: existing.extra, short: existing.short }
-        : { type: null, hours: null, extra: null, short: null };
+        ? { type: existing.type, hours: existing.hours, extra: existing.extra, short: existing.short, late: !!existing.late, absent: !!existing.absent, off: !!existing.off }
+        : { type: null, hours: null, extra: null, short: null, late: false, absent: false, off: false };
       drawDay();
     }
     function drawDay() {
@@ -301,6 +328,11 @@
         const on = draft.type === item.id;
         return '<button type="button" class="choice' + (on ? " on" : "") + '" data-type="' + item.id + '">' + item.label + "</button>";
       }).join("");
+      const flags = [["late", "지각"], ["absent", "결근"], ["off", "휴무"]].map((item) => {
+        const on = draft[item[0]];
+        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-flag="' + item[0] + '">' + item[1] + "</button>";
+      }).join("");
+      const ready = !!(draft.type || draft.extra != null || draft.short != null || draft.late || draft.absent || draft.off);
       const rest = draft.type === "edu" && draft.hours != null
         ? '<p class="muted">휴게 ' + formatRest(eduRest(draft.hours)) + (draft.hours > 1 ? " · 마지막 1시간은 휴게 없음" : "") + "</p>"
         : "";
@@ -313,16 +345,20 @@
         '<div><section class="sec time"><h3>근무 시간 입력</h3>' +
         '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="근무시간을 적으세요" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
         rest + '</section>' +
-        '<section class="sec extra"><h3>추가 선택 시간</h3>' +
-        '<label class="hours' + (draft.type ? "" : " off") + '">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.extra ?? "") + '"></label>' +
-        '<label class="hours' + (draft.type ? "" : " off") + '">단축근무<input id="short" type="number" min="0" step="0.5" placeholder="시간" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.short ?? "") + '"></label>' +
+        '<section class="sec extra"><h3>추가 선택</h3>' +
+        '<label class="hours">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" value="' + (draft.extra ?? "") + '"></label>' +
+        '<label class="hours">단축근무<input id="short" type="number" min="0" step="0.5" placeholder="시간" value="' + (draft.short ?? "") + '"></label>' +
+        flags +
         '</section></div></div>' +
-        '<button class="confirm" id="confirm" type="button"' + (draft.type ? "" : " disabled") + ">확인</button>" +
+        '<button class="confirm" id="confirm" type="button"' + (ready ? "" : " disabled") + ">확인</button>" +
         '<button class="ghost" id="clear" type="button">이 날짜 지우기</button></div>';
       document.getElementById("close-day").onclick = closeDay;
       document.getElementById("day-sheet").onclick = (event) => { if (event.target.id === "day-sheet") closeDay(); };
       document.querySelectorAll("[data-type]").forEach((button) => {
         button.onclick = () => { state.draft.type = button.dataset.type; drawDay(); };
+      });
+      document.querySelectorAll("[data-flag]").forEach((button) => {
+        button.onclick = () => { state.draft[button.dataset.flag] = !state.draft[button.dataset.flag]; drawDay(); };
       });
       bindHours("hours", "hours");
       bindHours("extra", "extra");
@@ -346,15 +382,17 @@
       };
     }
     function confirmDay() {
-      if (!state.draft.type) return;
+      const draft = state.draft;
+      if (!(draft.type || draft.extra != null || draft.short != null || draft.late || draft.absent || draft.off)) return;
       const map = { ...days() };
       map[String(state.picked)] = {
-        type: state.draft.type,
-        hours: state.draft.hours,
-        extra: state.draft.extra,
-        short: state.draft.short,
-        name: "",
-        slot: "",
+        type: draft.type,
+        hours: draft.type ? draft.hours : null,
+        extra: draft.extra,
+        short: draft.short,
+        late: !!draft.late,
+        absent: !!draft.absent,
+        off: !!draft.off,
       };
       state.store[key()] = map;
       save();
@@ -427,13 +465,18 @@
         if (!rec) continue;
         ctx.fillStyle = "#1b6b45";
         ctx.font = "600 12px " + font;
-        ctx.fillText(meta(rec.type).short + (rec.hours != null ? " " + rec.hours : ""), x + 8, y + 42);
+        if (rec.type) ctx.fillText(meta(rec.type).short + (rec.hours != null ? " " + rec.hours : ""), x + 8, y + 42);
         let extraY = 60;
         if (rec.type === "edu" && rec.hours != null) {
           ctx.fillStyle = "#746c62";
           ctx.font = "500 11px " + font;
           ctx.fillText("휴게 " + Math.round(eduRest(rec.hours)) + "분", x + 8, y + 58);
           extraY = 76;
+        }
+        if (marks(rec)) {
+          ctx.fillStyle = "#8c3d32";
+          ctx.font = "600 11px " + font;
+          ctx.fillText(marks(rec), x + 8, y + 100);
         }
         ctx.font = "500 12px " + font;
         if (rec.extra != null) {
@@ -488,7 +531,7 @@
       const probation = 9288;
       let eduMin = 0, eduRestSum = 0, probMin = 0, fullMin = 0, subMin = 0, extraMin = 0, shortMin = 0;
       Object.values(map).forEach((rec) => {
-        if (!rec || !rec.type) return;
+        if (!rec) return;
         const minutes = Math.round((rec.hours || 0) * 60);
         if (rec.type === "edu") {
           eduMin += minutes;
