@@ -218,8 +218,12 @@
       const hours = rec.hours == null || rec.hours === "" ? null : Number(rec.hours);
       const extra = rec.extra == null || rec.extra === "" ? null : Number(rec.extra);
       const short = rec.short == null || rec.short === "" ? null : Number(rec.short);
-      if (!type && !late && !absent && !off && extra == null && short == null) return null;
-      return { type, hours, extra, short, late, absent, off };
+      const lateHours = rec.lateHours == null || rec.lateHours === "" ? null : Number(rec.lateHours);
+      const rest = rec.rest == null || rec.rest === "" ? null : Number(rec.rest);
+      const total = rec.total == null || rec.total === "" ? null : Number(rec.total);
+      const workHours = hours == null || Number.isNaN(hours) ? null : hours;
+      if (!type && !late && !absent && !off && extra == null && short == null && workHours == null && lateHours == null) return null;
+      return { type, hours: workHours, extra, short, late: late || (lateHours || 0) > 0, absent, off, lateHours, rest, total };
     }
     function marks(rec) {
       return [rec.late ? "지각" : "", rec.absent ? "결근" : "", rec.off ? "휴무" : ""].filter(Boolean).join(" ");
@@ -281,10 +285,13 @@
         let inner = '<b class="' + (wd === 0 ? "sun" : "") + '">' + day + "</b>";
         if (rec) {
           if (rec.type) inner += '<span class="type">' + meta(rec.type).short + (rec.hours != null ? " " + rec.hours : "") + "</span>";
+          else if (rec.hours != null) inner += '<span class="type">근무 ' + rec.hours + "</span>";
           if (rec.type === "edu" && rec.hours != null) inner += '<span class="sub">휴게 ' + Math.round(eduRest(rec.hours)) + "분</span>";
           if (marks(rec)) inner += '<span class="sub" style="color:#8c3d32;font-weight:700">' + marks(rec) + "</span>";
-          if (rec.extra != null) inner += '<span class="sub">+' + rec.extra + "</span>";
-          if (rec.short != null) inner += '<span class="sub">-' + rec.short + "</span>";
+          if (rec.lateHours != null) inner += '<span class="sub">지각 -' + rec.lateHours + "</span>";
+          if (rec.extra != null) inner += '<span class="sub">초과 +' + rec.extra + "</span>";
+          if (rec.short != null) inner += '<span class="sub">단축 -' + rec.short + "</span>";
+          if (rec.total != null) inner += '<span class="sub">총 ' + rec.total + "</span>";
         }
         body += '<button type="button" class="day' + (rec ? " on" : "") + (isToday ? " today" : "") + '" data-day="' + day + '">' + inner + "</button>";
       }
@@ -317,7 +324,7 @@
       const existing = days()[String(day)];
       state.picked = day;
       state.draft = existing
-        ? { type: existing.type, hours: existing.hours, extra: existing.extra, short: existing.short, late: !!existing.late, absent: !!existing.absent, off: !!existing.off }
+        ? { type: existing.type, hours: existing.hours, extra: existing.extra, short: existing.short, late: !!existing.late, lateHours: existing.lateHours, rest: existing.rest, total: existing.total, absent: !!existing.absent, off: !!existing.off }
         : { type: null, hours: null, extra: null, short: null, late: false, absent: false, off: false };
       drawDay();
     }
@@ -384,14 +391,17 @@
     }
     function confirmDay() {
       const draft = state.draft;
-      if (!(draft.type || draft.extra != null || draft.short != null || draft.late || draft.absent || draft.off)) return;
+      if (!(draft.type || draft.extra != null || draft.short != null || draft.late || draft.absent || draft.off || draft.hours != null)) return;
       const map = { ...days() };
       map[String(state.picked)] = {
         type: draft.type,
-        hours: draft.type ? draft.hours : null,
+        hours: draft.hours,
         extra: draft.extra,
         short: draft.short,
         late: !!draft.late,
+        lateHours: draft.lateHours == null ? null : draft.lateHours,
+        rest: draft.rest == null ? null : draft.rest,
+        total: draft.total == null ? null : draft.total,
         absent: !!draft.absent,
         off: !!draft.off,
       };
