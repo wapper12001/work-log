@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 v73</title>
+  <title>근무내역 V74</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -152,7 +152,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span> <span class="ver">v73</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span> <span class="ver">V74</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -490,7 +490,7 @@
         const on = draft.type === item.id;
         return '<button type="button" class="choice' + (on ? " on" : "") + '" data-type="' + item.id + '">' + labelHtml(item.label) + "</button>";
       }).join("");
-      const flags = [["late", "지각"], ["absent", "결근"], ["off", "휴무"]].map((item) => {
+      const flags = [["absent", "결근"]].map((item) => {
         const on = draft[item[0]];
         return '<button type="button" class="choice' + (on ? " on" : "") + '" data-flag="' + item[0] + '">' + labelHtml(item[1]) + "</button>";
       }).join("");
