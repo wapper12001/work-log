@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 V76</title>
+  <title>근무내역 V77</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -153,7 +153,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V76</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V77</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -190,7 +190,7 @@
   <div id="send-sheet" class="sheet-bg hidden"></div>
   <script>
     const TYPES = [
-      { id: "edu", label: "교육", short: "교육" },
+      { id: "edu", label: "교육(2인 근무 교육만 해당)", short: "교육" },
       { id: "prob", label: "수습", short: "수습" },
       { id: "full", label: "정식", short: "정식" },
       { id: "sub", label: "대체근무", short: "대체" },
@@ -220,7 +220,7 @@
       "단축근무": "Làm rút ngắn",
       "확인": "Xác nhận",
       "이 날짜 지우기": "Xóa ngày này",
-      "교육": "Đào tạo",
+      "교육(2인 근무 교육만 해당)": "Đào tạo (chỉ ca 2 người)",
       "수습": "Thử việc",
       "정식": "Chính thức",
       "대체근무": "Làm thay",
@@ -253,7 +253,7 @@
       "단축근무": "အချိန်လျှော့",
       "확인": "အတည်ပြု",
       "이 날짜 지우기": "ဒီရက်ကို ဖျက်ပါ",
-      "교육": "လေ့ကျင့်ရေး",
+      "교육(2인 근무 교육만 해당)": "လေ့ကျင့်ရေး (၂ ယောက် တာဝန်သာ)",
       "수습": "အစမ်းခန့်",
       "정식": "အမြဲတမ်း",
       "대체근무": "အစားထိုး",
@@ -715,7 +715,7 @@
       });
       const lines = [];
       const eduPaid = Math.max(0, eduMin - eduRestSum);
-      if (eduPaid > 0) lines.push(["교육", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
+      if (eduPaid > 0) lines.push(["교육(2인 근무 교육만 해당)", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
       if (probMin > 0) lines.push(["수습", formatMinutes(probMin) + " · 수습 9,288원", won(probMin, probation)]);
       if (fullMin > 0) lines.push(["정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base)]);
       if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base)]);
