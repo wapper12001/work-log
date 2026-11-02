@@ -136,46 +136,143 @@
     .kakao { border: 0; background: var(--primary); color: var(--primary-fg); }
     .sms { border: 1px solid var(--line); background: var(--surface); }
     img.preview { width: 100%; border: 1px solid var(--line); border-radius: 0.75rem; }
-    .hidden { display: none; }
+    select {
+      height: 2.75rem; width: 100%; border: 1px solid var(--line); background: var(--surface);
+      border-radius: 0.75rem; padding: 0 0.5rem;
+    }
+    .tr { display: block; margin-top: 0.1rem; font-size: 0.75rem; font-weight: 500; line-height: 1.25; color: #5c564c; }
+    .notice .tr, .reset .tr, #open-send .tr { color: inherit; opacity: 0.92; }
+    [data-ko] { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+    h1[data-ko], .notice[data-ko], .reset[data-ko], #open-send[data-ko] { align-items: center; }
+    .choice { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+    .wd .tr { font-size: 0.65rem; }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <p class="muted">점장에게 카톡·문자로 전송</p>
-      <h1>근무내역</h1>
+      <label class="field"><span data-ko="언어">언어</span>
+        <select id="lang">
+          <option value="">한국어</option>
+          <option value="vi">베트남어</option>
+          <option value="my">미얀마어</option>
+        </select>
+      </label>
+      <p class="muted" data-ko="점장에게 카톡·문자로 전송">점장에게 카톡·문자로 전송</p>
+      <h1 data-ko="근무내역">근무내역</h1>
     </header>
     <div class="month">
       <button class="icon" id="prev" type="button" aria-label="이전달">‹</button>
       <p id="month-label"></p>
       <button class="icon" id="next" type="button" aria-label="다음달">›</button>
     </div>
-    <p class="notice">※ 달력에서 날짜와 근무 시간대를 입력하세요</p>
+    <p class="notice" data-ko="*달력의 날짜를 터치해서 정보를 입력하세요">*달력의 날짜를 터치해서 정보를 입력하세요</p>
     <div class="topfields">
-      <label class="field"><span>점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
+      <label class="field"><span data-ko="점장 전화번호">점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
       <p id="phone-error" class="err"></p>
-      <label class="field"><span>근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
-      <div class="pair">
-        <label class="field"><span>근무개월수</span><input id="months" type="number" min="0" step="1" inputmode="numeric" placeholder="개월"></label>
-        <label class="field"><span>근무시간대</span><input id="slot" type="text" placeholder="06시~12시"></label>
+      <label class="field"><span data-ko="근무자 이름">근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
+      <label class="field"><span data-ko="근무개월수">근무개월수</span><select id="months"></select></label>
+      <div class="field">
+        <span data-ko="근무시간대">근무시간대</span>
+        <div class="pair">
+          <label class="field"><span data-ko="시작">시작</span><select id="start"></select></label>
+          <label class="field"><span data-ko="종료">종료</span><select id="end"></select></label>
+        </div>
       </div>
     </div>
-    <button id="reset-all" class="reset" type="button">전체 새로고침</button>
+    <button id="reset-all" class="reset" type="button" data-ko="전체 새로고침">전체 새로고침</button>
     <p id="summary" class="summary"></p>
     <section class="cal"><div id="cal" class="grid"></div></section>
   </main>
-  <div class="send"><button id="open-send" type="button">달력 이미지로 전송</button></div>
+  <div class="send"><button id="open-send" type="button" data-ko="달력 이미지로 전송">달력 이미지로 전송</button></div>
   <div id="day-sheet" class="sheet-bg hidden"></div>
   <div id="send-sheet" class="sheet-bg hidden"></div>
   <script>
     const TYPES = [
-      { id: "edu", label: "2인 근무 교육", short: "교육" },
-      { id: "prob", label: "1인 근무 수습", short: "수습" },
-      { id: "full", label: "1인 근무 정식", short: "정식" },
+      { id: "edu", label: "교육", short: "교육" },
+      { id: "prob", label: "수습", short: "수습" },
+      { id: "full", label: "정식", short: "정식" },
       { id: "sub", label: "대체근무", short: "대체" },
     ];
     const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
     const STORE_KEY = "work-log-v1";
+    const VI = {
+      "언어": "Ngôn ngữ",
+      "점장에게 카톡·문자로 전송": "Gửi quản lý qua Kakao hoặc tin nhắn",
+      "근무내역": "Nhật ký ca làm",
+      "*달력의 날짜를 터치해서 정보를 입력하세요": "Chạm ngày trên lịch để nhập",
+      "점장 전화번호": "Số điện thoại quản lý",
+      "근무자 이름": "Tên nhân viên",
+      "근무개월수": "Số tháng làm việc",
+      "근무시간대": "Khung giờ làm",
+      "시작": "Bắt đầu",
+      "종료": "Kết thúc",
+      "선택": "Chọn",
+      "전체 새로고침": "Làm mới tất cả",
+      "달력 이미지로 전송": "Gửi ảnh lịch",
+      "근무 유형 하나만 선택": "Chỉ chọn một loại ca",
+      "근무 시간 입력": "Nhập giờ làm",
+      "근무 시간": "Giờ làm",
+      "근무시간을 적으세요": "Nhập số giờ",
+      "추가 선택": "Lựa chọn thêm",
+      "추가근무": "Làm thêm",
+      "단축근무": "Làm rút ngắn",
+      "확인": "Xác nhận",
+      "이 날짜 지우기": "Xóa ngày này",
+      "교육": "Đào tạo",
+      "수습": "Thử việc",
+      "정식": "Chính thức",
+      "대체근무": "Làm thay",
+      "지각": "Đi muộn",
+      "결근": "Vắng mặt",
+      "휴무": "Nghỉ",
+      "점장 전화번호를 입력하세요.": "Nhập số điện thoại quản lý.",
+      "일": "CN", "월": "T2", "화": "T3", "수": "T4", "목": "T5", "금": "T6", "토": "T7"
+    };
+    const MY = {
+      "언어": "ဘာသာစကား",
+      "점장에게 카톡·문자로 전송": "မန်နေဂျာထံ ကာကာအို သို့မဟုတ် စာတိုပို့ပါ",
+      "근무내역": "အလုပ်မှတ်တမ်း",
+      "*달력의 날짜를 터치해서 정보를 입력하세요": "ပြက္ခဒိန်ရက်ကို နှိပ်ပြီး ဖြည့်ပါ",
+      "점장 전화번호": "မန်နေဂျာ ဖုန်း",
+      "근무자 이름": "အလုပ်သမားအမည်",
+      "근무개월수": "လုပ်သက် လအရေအတွက်",
+      "근무시간대": "အလုပ်ချိန်",
+      "시작": "စတင်",
+      "종료": "ပြီးဆုံး",
+      "선택": "ရွေးပါ",
+      "전체 새로고침": "အားလုံး ပြန်စ",
+      "달력 이미지로 전송": "ပြက္ခဒိန်ပုံ ပို့ရန်",
+      "근무 유형 하나만 선택": "အလုပ်အမျိုးအစား တစ်ခုသာ ရွေးပါ",
+      "근무 시간 입력": "အလုပ်ချိန် ထည့်ပါ",
+      "근무 시간": "အလုပ်ချိန်",
+      "근무시간을 적으세요": "နာရီရေးပါ",
+      "추가 선택": "ထပ်ဆောင်း ရွေးချယ်မှု",
+      "추가근무": "အချိန်ပို",
+      "단축근무": "အချိန်လျှော့",
+      "확인": "အတည်ပြု",
+      "이 날짜 지우기": "ဒီရက်ကို ဖျက်ပါ",
+      "교육": "လေ့ကျင့်ရေး",
+      "수습": "အစမ်းခန့်",
+      "정식": "အမြဲတမ်း",
+      "대체근무": "အစားထိုး",
+      "지각": "နောက်ကျ",
+      "결근": "ပျက်ကွက်",
+      "휴무": "နားရက်",
+      "점장 전화번호를 입력하세요.": "မန်နေဂျာဖုန်း ထည့်ပါ။",
+      "일": "နွေ", "월": "လာ", "화": "ဂါ", "수": "ဟူး", "목": "ကြာ", "금": "သော", "토": "နေ"
+    };
+    function tr(ko) {
+      const pack = state.lang === "vi" ? VI : state.lang === "my" ? MY : null;
+      return pack && pack[ko] ? pack[ko] : "";
+    }
+    function labelHtml(ko) {
+      const extra = tr(ko);
+      return extra ? ko + '<span class="tr">' + extra + "</span>" : ko;
+    }
+    function applyLang() {
+      document.querySelectorAll("[data-ko]").forEach((el) => { el.innerHTML = labelHtml(el.getAttribute("data-ko")); });
+    }
     const now = new Date();
     const state = {
       year: now.getFullYear(),
@@ -184,6 +281,7 @@
       worker: localStorage.getItem("work-log-worker-name") || "",
       months: Number(localStorage.getItem("work-log-worker-months")) || 0,
       slot: localStorage.getItem("work-log-shift") || "",
+      lang: localStorage.getItem("work-log-lang") || "",
       store: {},
       picked: null,
       draft: null,
@@ -195,11 +293,53 @@
     const phoneEl = document.getElementById("phone");
     const workerEl = document.getElementById("worker");
     const monthsEl = document.getElementById("months");
-    const slotEl = document.getElementById("slot");
+    const startEl = document.getElementById("start");
+    const endEl = document.getElementById("end");
+    const langEl = document.getElementById("lang");
+    function timeOptions() {
+      const list = [""];
+      for (let hour = 0; hour < 24; hour += 1) {
+        list.push(String(hour).padStart(2, "0") + ":00");
+        list.push(String(hour).padStart(2, "0") + ":30");
+      }
+      list.push("24:00");
+      return list;
+    }
+    function snapTime(text) {
+      const match = String(text || "").match(/(\d{1,2})(?::(\d{2}))?/);
+      if (!match) return "";
+      let hour = Math.min(24, Number(match[1]));
+      let minute = match[2] ? Number(match[2]) : 0;
+      if (hour === 24) return "24:00";
+      minute = minute >= 30 ? 30 : 0;
+      return String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+    }
+    function fillTimes(select, selected) {
+      select.innerHTML = timeOptions().map((value) => {
+        const label = value || ("선택" + (tr("선택") ? " / " + tr("선택") : ""));
+        return '<option value="' + value + '"' + (value === selected ? " selected" : "") + ">" + label + "</option>";
+      }).join("");
+    }
+    function splitSlot(slot) {
+      const parts = String(slot || "").split("~");
+      return [snapTime(parts[0]), snapTime(parts[1])];
+    }
+    function monthOption(n) {
+      const extra = state.lang === "vi" ? " / " + n + " tháng" : state.lang === "my" ? " / " + n + " လ" : "";
+      return '<option value="' + n + '">' + n + "개월" + extra + "</option>";
+    }
+    monthsEl.innerHTML = Array.from({ length: 37 }, (_, n) => monthOption(n)).join("");
+    const slotParts = splitSlot(state.slot);
+    fillTimes(startEl, slotParts[0]);
+    fillTimes(endEl, slotParts[1]);
+    function syncSlot() {
+      state.slot = startEl.value && endEl.value ? startEl.value + "~" + endEl.value : "";
+    }
     phoneEl.value = state.phone;
     workerEl.value = state.worker;
-    monthsEl.value = state.months || "";
-    slotEl.value = state.slot;
+    monthsEl.value = String(state.months || 0);
+    langEl.value = state.lang;
+    applyLang();
 
     function save() {
       localStorage.setItem(STORE_KEY, JSON.stringify(state.store));
@@ -207,6 +347,7 @@
       localStorage.setItem("work-log-worker-name", state.worker);
       localStorage.setItem("work-log-worker-months", String(state.months));
       localStorage.setItem("work-log-shift", state.slot);
+      localStorage.setItem("work-log-lang", state.lang);
     }
     function key() { return state.year + "-" + state.month; }
     function cleanRec(rec) {
@@ -275,7 +416,7 @@
 
       const lead = new Date(state.year, state.month - 1, 1).getDay();
       const total = new Date(state.year, state.month, 0).getDate();
-      const cells = WEEK.map((label, index) => '<div class="wd' + (index === 0 ? " sun" : "") + '">' + label + "</div>").join("");
+      const cells = WEEK.map((label, index) => '<div class="wd' + (index === 0 ? " sun" : "") + '" data-ko="' + label + '">' + labelHtml(label) + "</div>").join("");
       let body = "";
       for (let i = 0; i < lead; i += 1) body += "<div></div>";
       for (let day = 1; day <= total; day += 1) {
@@ -313,12 +454,25 @@
     }
     phoneEl.oninput = () => { state.phone = phoneEl.value; document.getElementById("phone-error").textContent = ""; save(); };
     workerEl.oninput = () => { state.worker = workerEl.value; save(); };
-    monthsEl.oninput = () => {
-      const next = Number(monthsEl.value);
-      state.months = Number.isFinite(next) && next > 0 ? Math.floor(next) : 0;
+    monthsEl.onchange = () => {
+      state.months = Math.max(0, Math.floor(Number(monthsEl.value) || 0));
       save();
     };
-    slotEl.oninput = () => { state.slot = slotEl.value; save(); };
+    startEl.onchange = () => { syncSlot(); save(); };
+    endEl.onchange = () => { syncSlot(); save(); };
+    langEl.onchange = () => {
+      state.lang = langEl.value;
+      const start = startEl.value;
+      const end = endEl.value;
+      fillTimes(startEl, start);
+      fillTimes(endEl, end);
+      monthsEl.innerHTML = Array.from({ length: 37 }, (_, n) => monthOption(n)).join("");
+      monthsEl.value = String(state.months || 0);
+      save();
+      applyLang();
+      render();
+      if (state.picked != null) drawDay();
+    };
 
     function openDay(day) {
       const existing = days()[String(day)];
@@ -334,11 +488,11 @@
       const wd = WEEK[new Date(state.year, state.month - 1, day).getDay()];
       const choices = TYPES.map((item) => {
         const on = draft.type === item.id;
-        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-type="' + item.id + '">' + item.label + "</button>";
+        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-type="' + item.id + '">' + labelHtml(item.label) + "</button>";
       }).join("");
       const flags = [["late", "지각"], ["absent", "결근"], ["off", "휴무"]].map((item) => {
         const on = draft[item[0]];
-        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-flag="' + item[0] + '">' + item[1] + "</button>";
+        return '<button type="button" class="choice' + (on ? " on" : "") + '" data-flag="' + item[0] + '">' + labelHtml(item[1]) + "</button>";
       }).join("");
       const ready = !!(draft.type || draft.extra != null || draft.short != null || draft.late || draft.absent || draft.off);
       const rest = draft.type === "edu" && draft.hours != null
@@ -349,17 +503,17 @@
         '<div class="sheet" role="dialog">' +
         '<div class="row"><h2>' + state.month + "월 " + day + "일 " + wd + '요일</h2><button class="icon" id="close-day" type="button" aria-label="닫기">✕</button></div>' +
         '<div class="day-grid">' +
-        '<section class="sec type"><h3>근무 유형 하나만 선택</h3>' + choices + '</section>' +
-        '<div><section class="sec time"><h3>근무 시간 입력</h3>' +
-        '<label class="hours' + (draft.type ? "" : " off") + '">근무 시간<input id="hours" type="number" min="0" step="0.5" placeholder="근무시간을 적으세요" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
+        '<section class="sec type"><h3>' + labelHtml("근무 유형 하나만 선택") + '</h3>' + choices + '</section>' +
+        '<div><section class="sec time"><h3>' + labelHtml("근무 시간 입력") + '</h3>' +
+        '<label class="hours' + (draft.type ? "" : " off") + '"><span>' + labelHtml("근무 시간") + '</span><input id="hours" type="number" min="0" step="0.5" placeholder="' + ("근무시간을 적으세요" + (tr("근무시간을 적으세요") ? " / " + tr("근무시간을 적으세요") : "")) + '" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
         rest + '</section>' +
-        '<section class="sec extra"><h3>추가 선택</h3>' +
-        '<label class="hours">추가근무<input id="extra" type="number" min="0" step="0.5" placeholder="시간" value="' + (draft.extra ?? "") + '"></label>' +
-        '<label class="hours">단축근무<input id="short" type="number" min="0" step="0.5" placeholder="시간" value="' + (draft.short ?? "") + '"></label>' +
+        '<section class="sec extra"><h3>' + labelHtml("추가 선택") + '</h3>' +
+        '<label class="hours"><span>' + labelHtml("추가근무") + '</span><input id="extra" type="number" min="0" step="0.5" placeholder="' + ("시간" + (tr("시간") ? "" : "")) + '" value="' + (draft.extra ?? "") + '"></label>' +
+        '<label class="hours"><span>' + labelHtml("단축근무") + '</span><input id="short" type="number" min="0" step="0.5" placeholder="시간" value="' + (draft.short ?? "") + '"></label>' +
         flags +
         '</section></div></div>' +
-        '<button class="confirm" id="confirm" type="button"' + (ready ? "" : " disabled") + ">확인</button>" +
-        '<button class="ghost" id="clear" type="button">이 날짜 지우기</button></div>';
+        '<button class="confirm" id="confirm" type="button"' + (ready ? "" : " disabled") + ">" + labelHtml("확인") + "</button>" +
+        '<button class="ghost" id="clear" type="button">' + labelHtml("이 날짜 지우기") + "</button></div>";
       document.getElementById("close-day").onclick = closeDay;
       document.getElementById("day-sheet").onclick = (event) => { if (event.target.id === "day-sheet") closeDay(); };
       document.querySelectorAll("[data-type]").forEach((button) => {
@@ -555,9 +709,9 @@
       });
       const lines = [];
       const eduPaid = Math.max(0, eduMin - eduRestSum);
-      if (eduPaid > 0) lines.push(["2인 근무 교육", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
-      if (probMin > 0) lines.push(["1인 근무 수습", formatMinutes(probMin) + " · 수습 9,288원", won(probMin, probation)]);
-      if (fullMin > 0) lines.push(["1인 근무 정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base)]);
+      if (eduPaid > 0) lines.push(["교육", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
+      if (probMin > 0) lines.push(["수습", formatMinutes(probMin) + " · 수습 9,288원", won(probMin, probation)]);
+      if (fullMin > 0) lines.push(["정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base)]);
       if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base)]);
       if (extraMin > 0) lines.push(["추가근무", formatMinutes(extraMin) + " · 시급 10,320원", won(extraMin, base)]);
       if (shortMin > 0) lines.push(["단축근무", formatMinutes(shortMin) + " · 시급 10,320원", -won(shortMin, base)]);
@@ -616,7 +770,8 @@
     }
     document.getElementById("open-send").onclick = async () => {
       if (!validPhone(state.phone)) {
-        document.getElementById("phone-error").textContent = "점장 전화번호를 입력하세요.";
+        const message = "점장 전화번호를 입력하세요.";
+        document.getElementById("phone-error").textContent = message + (tr(message) ? " " + tr(message) : "");
         phoneEl.focus();
         return;
       }
