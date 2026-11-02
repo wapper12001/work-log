@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 V75</title>
+  <title>근무내역 V76</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -153,7 +153,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V75</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V76</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -506,7 +506,7 @@
         '<div class="day-grid">' +
         '<section class="sec type"><h3>' + labelHtml("근무 유형 하나만 선택") + '</h3>' + choices + '</section>' +
         '<div><section class="sec time"><h3>' + labelHtml("근무 시간 입력") + '</h3>' +
-        '<label class="hours' + (draft.type ? "" : " off") + '"><span>' + labelHtml("근무 시간") + '</span><input id="hours" type="number" min="0" step="0.5" placeholder="' + ("근무시간을 적으세요" + (tr("근무시간을 적으세요") ? " / " + tr("근무시간을 적으세요") : "")) + '" ' + (draft.type ? "" : "disabled") + ' value="' + (draft.hours ?? "") + '"></label>' +
+        '<label class="hours' + (draft.absent || draft.type ? "" : " off") + '"><span>' + labelHtml("근무 시간") + '</span><input id="hours" type="number" min="0" step="0.5" placeholder="' + ("근무시간을 적으세요" + (tr("근무시간을 적으세요") ? " / " + tr("근무시간을 적으세요") : "")) + '" ' + (draft.absent || !draft.type ? "disabled" : "") + ' value="' + (draft.absent ? 0 : (draft.hours ?? "")) + '"></label>' +
         rest + '</section>' +
         '<section class="sec extra"><h3>' + labelHtml("추가 선택") + '</h3>' +
         '<label class="hours"><span>' + labelHtml("추가근무") + '</span><input id="extra" type="number" min="0" step="0.5" placeholder="' + ("시간" + (tr("시간") ? "" : "")) + '" value="' + (draft.extra ?? "") + '"></label>' +
@@ -521,7 +521,12 @@
         button.onclick = () => { state.draft.type = button.dataset.type; drawDay(); };
       });
       document.querySelectorAll("[data-flag]").forEach((button) => {
-        button.onclick = () => { state.draft[button.dataset.flag] = !state.draft[button.dataset.flag]; drawDay(); };
+        button.onclick = () => {
+          const flag = button.dataset.flag;
+          state.draft[flag] = !state.draft[flag];
+          if (flag === "absent") state.draft.hours = state.draft.absent ? 0 : null;
+          drawDay();
+        };
       });
       bindHours("hours", "hours");
       bindHours("extra", "extra");
@@ -550,7 +555,7 @@
       const map = { ...days() };
       map[String(state.picked)] = {
         type: draft.type,
-        hours: draft.hours,
+        hours: draft.absent ? 0 : draft.hours,
         extra: draft.extra,
         short: draft.short,
         late: !!draft.late,
