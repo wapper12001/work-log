@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 v72</title>
+  <title>근무내역 v73</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -39,7 +39,7 @@
     }
     main { max-width: 32rem; margin: 0 auto; padding: 1.5rem 1rem 7rem; }
     header { display: block; margin-bottom: 0.75rem; }
-    h1 { margin: 0; font-size: 1.5rem; }
+    h1 { margin: 0 0 0.6rem; font-size: 1.5rem; }
     .ver { color: var(--primary); font-size: 1rem; }
     .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
     .month { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0.25rem; margin-bottom: 0.75rem; }
@@ -152,15 +152,14 @@
 <body>
   <main>
     <header>
-      <label class="field"><span data-ko="언어">언어</span>
+      <h1><span data-ko="근무내역">근무내역</span> <span class="ver">v73</span></h1>
+      <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
           <option value="vi">베트남어</option>
           <option value="my">미얀마어</option>
         </select>
       </label>
-      <p class="muted" data-ko="점장에게 카톡·문자로 전송">점장에게 카톡·문자로 전송</p>
-      <h1><span data-ko="근무내역">근무내역</span> <span class="ver">v72</span></h1>
     </header>
     <div class="month">
       <button class="icon" id="prev" type="button" aria-label="이전달">‹</button>
