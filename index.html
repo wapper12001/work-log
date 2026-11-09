@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 V77</title>
+  <title>근무내역 V78</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -153,7 +153,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V77</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V78</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -171,6 +171,7 @@
     <div class="topfields">
       <label class="field"><span data-ko="점장 전화번호">점장 전화번호</span><input id="phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
       <p id="phone-error" class="err"></p>
+      <label class="field"><span data-ko="점포">점포</span><select id="place"></select></label>
       <label class="field"><span data-ko="근무자 이름">근무자 이름</span><input id="worker" type="text" placeholder="이름"></label>
       <label class="field"><span data-ko="근무개월수">근무개월수</span><select id="months"></select></label>
       <div class="field">
@@ -188,6 +189,7 @@
   <div class="send"><button id="open-send" type="button" data-ko="달력 이미지로 전송">달력 이미지로 전송</button></div>
   <div id="day-sheet" class="sheet-bg hidden"></div>
   <div id="send-sheet" class="sheet-bg hidden"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const TYPES = [
       { id: "edu", label: "교육(2인 근무 교육만 해당)", short: "교육" },
@@ -197,12 +199,20 @@
     ];
     const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
     const STORE_KEY = "work-log-v1";
+    const sb = window.supabase.createClient(
+      "https://rfctnigrqzdqnpavwlyi.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmY3RuaWdycXpkcW5wYXZ3bHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MTY4OTcsImV4cCI6MjEwNzk5Mjg5N30.u3sNstTm-zJt-UhoX4TuQgMunPZVDm5FC8lu-7FaM5s"
+    );
+    function workKey(store, worker) {
+      return encodeURIComponent(store) + "__" + encodeURIComponent(worker.trim());
+    }
     const VI = {
       "언어": "Ngôn ngữ",
       "점장에게 카톡·문자로 전송": "Gửi quản lý qua Kakao hoặc tin nhắn",
       "근무내역": "Nhật ký ca làm",
       "*달력의 날짜를 터치해서 정보를 입력하세요": "Chạm ngày trên lịch để nhập",
       "점장 전화번호": "Số điện thoại quản lý",
+      "점포": "Cửa hàng",
       "근무자 이름": "Tên nhân viên",
       "근무개월수": "Số tháng làm việc",
       "근무시간대": "Khung giờ làm",
@@ -236,6 +246,7 @@
       "근무내역": "အလုပ်မှတ်တမ်း",
       "*달력의 날짜를 터치해서 정보를 입력하세요": "ပြက္ခဒိန်ရက်ကို နှိပ်ပြီး ဖြည့်ပါ",
       "점장 전화번호": "မန်နေဂျာ ဖုန်း",
+      "점포": "ဆိုင်",
       "근무자 이름": "အလုပ်သမားအမည်",
       "근무개월수": "လုပ်သက် လအရေအတွက်",
       "근무시간대": "အလုပ်ချိန်",
@@ -280,6 +291,7 @@
       month: now.getMonth() + 1,
       phone: localStorage.getItem("work-log-manager-phone") || "",
       worker: localStorage.getItem("work-log-worker-name") || "",
+      place: localStorage.getItem("work-log-store") || "",
       months: Number(localStorage.getItem("work-log-worker-months")) || 0,
       slot: localStorage.getItem("work-log-shift") || "",
       lang: localStorage.getItem("work-log-lang") || "",
@@ -293,6 +305,7 @@
 
     const phoneEl = document.getElementById("phone");
     const workerEl = document.getElementById("worker");
+    const placeEl = document.getElementById("place");
     const monthsEl = document.getElementById("months");
     const startEl = document.getElementById("start");
     const endEl = document.getElementById("end");
@@ -338,6 +351,7 @@
     }
     phoneEl.value = state.phone;
     workerEl.value = state.worker;
+    placeEl.value = state.place;
     monthsEl.value = String(state.months || 0);
     langEl.value = state.lang;
     applyLang();
@@ -346,6 +360,7 @@
       localStorage.setItem(STORE_KEY, JSON.stringify(state.store));
       localStorage.setItem("work-log-manager-phone", state.phone);
       localStorage.setItem("work-log-worker-name", state.worker);
+      localStorage.setItem("work-log-store", state.place);
       localStorage.setItem("work-log-worker-months", String(state.months));
       localStorage.setItem("work-log-shift", state.slot);
       localStorage.setItem("work-log-lang", state.lang);
@@ -452,9 +467,11 @@
       state.year = next.getFullYear();
       state.month = next.getMonth() + 1;
       render();
+      pullServer();
     }
     phoneEl.oninput = () => { state.phone = phoneEl.value; document.getElementById("phone-error").textContent = ""; save(); };
-    workerEl.oninput = () => { state.worker = workerEl.value; save(); };
+    workerEl.oninput = () => { state.worker = workerEl.value; save(); schedulePull(); };
+    placeEl.onchange = () => { state.place = placeEl.value; save(); pullServer(); };
     monthsEl.onchange = () => {
       state.months = Math.max(0, Math.floor(Number(monthsEl.value) || 0));
       save();
@@ -537,6 +554,7 @@
         delete map[String(state.picked)];
         state.store[key()] = map;
         save();
+        removeDay(state.picked);
         closeDay();
         render();
       };
@@ -565,10 +583,12 @@
         absent: !!draft.absent,
         off: !!draft.off,
       };
+      const day = state.picked;
       state.store[key()] = map;
       save();
       closeDay();
       render();
+      pushDay(day, map[String(day)]);
     }
     function closeDay() {
       state.picked = null;
@@ -679,7 +699,7 @@
     }
 
     document.getElementById("reset-all").onclick = () => {
-      if (!confirm("달력에 입력한 근무내역만 모두 지울까요?")) return;
+      if (!confirm("화면을 비운 뒤 서버에 저장된 근무를 다시 불러옵니다. 계속할까요?")) return;
       state.store = {};
       state.picked = null;
       state.draft = null;
@@ -687,7 +707,69 @@
       document.getElementById("send-sheet").classList.add("hidden");
       save();
       render();
+      pullServer();
     };
+    let pullTimer = 0;
+    function schedulePull() {
+      clearTimeout(pullTimer);
+      pullTimer = setTimeout(pullServer, 400);
+    }
+    function monthPrefix() {
+      return state.year + "-" + String(state.month).padStart(2, "0") + "-";
+    }
+    async function loadPlaces() {
+      const { data, error } = await sb.from("stores").select("name").order("name");
+      if (error) return;
+      const names = (data || []).map((row) => row.name).filter((name) => name && !String(name).startsWith("__"));
+      placeEl.innerHTML = '<option value="">점포 선택</option>' + names.map((name) => '<option value="' + name + '">' + name + "</option>").join("");
+      placeEl.value = names.includes(state.place) ? state.place : "";
+      if (placeEl.value !== state.place) state.place = placeEl.value;
+    }
+    async function pullServer() {
+      if (!state.place || !state.worker.trim()) return;
+      const { data, error } = await sb.from("checklist_items").select("title,description").eq("store_name", "__worklog__").eq("shift_key", workKey(state.place, state.worker));
+      if (error) return;
+      const prefix = monthPrefix();
+      const map = {};
+      (data || []).forEach((row) => {
+        if (!String(row.title).startsWith(prefix)) return;
+        let body = {};
+        try { body = JSON.parse(row.description || "{}"); } catch (e) { return; }
+        const clean = cleanRec(body);
+        if (clean) map[String(Number(String(row.title).slice(8, 10)))] = clean;
+      });
+      state.store[key()] = map;
+      save();
+      render();
+    }
+    async function pushDay(day, rec) {
+      if (!state.place || !state.worker.trim() || !rec) return;
+      const date = monthPrefix() + String(day).padStart(2, "0");
+      const shiftKey = workKey(state.place, state.worker);
+      const body = Object.assign({}, rec, { store: state.place, worker: state.worker.trim(), date: date, edited: true });
+      const { data: found, error: findErr } = await sb.from("checklist_items").select("id").eq("store_name", "__worklog__").eq("shift_key", shiftKey).eq("title", date);
+      if (findErr) return;
+      const prev = (found || [])[0];
+      if (prev) {
+        await sb.from("checklist_items").update({ description: JSON.stringify(body), shift_name: "day" }).eq("id", prev.id);
+        return;
+      }
+      await sb.from("checklist_items").insert({
+        store_name: "__worklog__",
+        shift_key: shiftKey,
+        shift_name: "day",
+        item_order: 0,
+        title: date,
+        description: JSON.stringify(body),
+        photo_required: false
+      });
+    }
+    async function removeDay(day) {
+      if (!state.place || !state.worker.trim()) return;
+      const date = monthPrefix() + String(day).padStart(2, "0");
+      await sb.from("checklist_items").delete().eq("store_name", "__worklog__").eq("shift_key", workKey(state.place, state.worker)).eq("title", date);
+    }
+    loadPlaces().then(pullServer);
     function won(minutes, wage) { return Math.round((minutes / 60) * wage); }
     function formatMinutes(minutes) {
       const total = Math.max(0, Math.round(minutes));
@@ -700,7 +782,7 @@
     function calcGross(map) {
       const base = 10320;
       const probation = 9288;
-      let eduMin = 0, eduRestSum = 0, probMin = 0, fullMin = 0, subMin = 0, extraMin = 0, shortMin = 0;
+      let eduMin = 0, eduRestSum = 0, probMin = 0, fullMin = 0, subMin = 0, extraMin = 0, shortMin = 0, lateMin = 0;
       Object.values(map).forEach((rec) => {
         if (!rec) return;
         const minutes = Math.round((rec.hours || 0) * 60);
@@ -712,6 +794,7 @@
         else if (rec.type === "sub") subMin += minutes;
         extraMin += Math.round((rec.extra || 0) * 60);
         shortMin += Math.round((rec.short || 0) * 60);
+        lateMin += Math.round((rec.lateHours || 0) * 60);
       });
       const lines = [];
       const eduPaid = Math.max(0, eduMin - eduRestSum);
@@ -721,6 +804,7 @@
       if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base)]);
       if (extraMin > 0) lines.push(["추가근무", formatMinutes(extraMin) + " · 시급 10,320원", won(extraMin, base)]);
       if (shortMin > 0) lines.push(["단축근무", formatMinutes(shortMin) + " · 시급 10,320원", -won(shortMin, base)]);
+      if (lateMin > 0) lines.push(["지각", formatMinutes(lateMin) + " · 시급 10,320원", -won(lateMin, base)]);
       const total = lines.reduce((sum, line) => sum + line[2], 0);
       return { lines, total };
     }
