@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 V77</title>
+  <title>근무내역 V78</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -153,7 +153,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V77</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V78</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -188,6 +188,7 @@
   <div class="send"><button id="open-send" type="button" data-ko="달력 이미지로 전송">달력 이미지로 전송</button></div>
   <div id="day-sheet" class="sheet-bg hidden"></div>
   <div id="send-sheet" class="sheet-bg hidden"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const TYPES = [
       { id: "edu", label: "교육(2인 근무 교육만 해당)", short: "교육" },
@@ -377,6 +378,14 @@
         const clean = cleanRec(rec);
         if (clean) next[day] = clean;
       });
+      Object.entries(serverDays).forEach(([day, rec]) => {
+        const local = next[day];
+        next[day] = Object.assign({}, rec, {
+          absent: !!(local && local.absent),
+          off: !!(local && local.off),
+        });
+        if (!next[day].type && local && local.type) next[day].type = local.type;
+      });
       return next;
     }
     function meta(id) { return TYPES.find((item) => item.id === id); }
@@ -393,6 +402,80 @@
       return m + "분";
     }
     function validPhone(phone) { return /^01\d{8,9}$/.test(phone.replace(/\D/g, "")); }
+
+    const PAY_URL = "https://rfctnigrqzdqnpavwlyi.supabase.co";
+    const PAY_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmY3RuaWdycXpkcW5wYXZ3bHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MTY4OTcsImV4cCI6MjEwNzk5Mjg5N30.u3sNstTm-zJt-UhoX4TuQgMunPZVDm5FC8lu-7FaM5s";
+    let payClient = null;
+    let serverDays = {};
+    let loadToken = 0;
+    let loadTimer = 0;
+    function escText(value) {
+      return String(value || "").replace(/[&<>"]/g, (ch) => {
+        if (ch === "&") return "&" + "amp;";
+        if (ch === "<") return "&" + "lt;";
+        if (ch === ">") return "&" + "gt;";
+        return "&" + "quot;";
+      });
+    }
+    function numOrNull(value) {
+      const n = Number(value);
+      return Number.isFinite(n) && n !== 0 ? n : null;
+    }
+    function payTypeId(name) {
+      if (name === "교육" || name === "edu") return "edu";
+      if (name === "수습" || name === "prob") return "prob";
+      if (name === "정식" || name === "full") return "full";
+      return null;
+    }
+    function addServerRow(day, row) {
+      const rec = {
+        type: payTypeId(row.pay_type),
+        hours: Number(row.work_hours) || 0,
+        extra: numOrNull(row.extra_hours),
+        short: numOrNull(row.short_hours),
+        lateHours: numOrNull(row.late_hours),
+        late: Number(row.late_hours) > 0,
+        rest: numOrNull(row.break_hours),
+        total: row.total_hours == null ? null : Number(row.total_hours),
+        absent: false,
+        off: false,
+        store: row.store_name || "",
+      };
+      const prev = serverDays[day];
+      if (!prev) {
+        serverDays[day] = rec;
+        return;
+      }
+      prev.hours = Math.round(((prev.hours || 0) + rec.hours) * 10) / 10;
+      ["extra", "short", "lateHours", "rest", "total"].forEach((field) => {
+        const sum = (prev[field] || 0) + (rec[field] || 0);
+        prev[field] = sum ? Math.round(sum * 10) / 10 : null;
+      });
+      prev.late = prev.late || rec.late;
+      if (prev.type !== rec.type) prev.type = null;
+      if (rec.store && prev.store !== rec.store) prev.store = prev.store ? prev.store + ", " + rec.store : rec.store;
+    }
+    async function loadServerDays() {
+      const token = ++loadToken;
+      const worker = state.worker.trim();
+      serverDays = {};
+      if (!worker || !window.supabase) {
+        render();
+        return;
+      }
+      if (!payClient) payClient = window.supabase.createClient(PAY_URL, PAY_KEY);
+      const start = state.year + "-" + String(state.month).padStart(2, "0") + "-01";
+      const last = new Date(state.year, state.month, 0).getDate();
+      const end = state.year + "-" + String(state.month).padStart(2, "0") + "-" + String(last).padStart(2, "0");
+      const { data, error } = await payClient.from("pay_records").select("work_date,store_name,pay_type,work_hours,late_hours,short_hours,extra_hours,break_hours,total_hours").eq("worker_name", worker).gte("work_date", start).lte("work_date", end);
+      if (token !== loadToken) return;
+      if (!error && data) data.forEach((row) => addServerRow(String(Number(String(row.work_date).slice(8, 10))), row));
+      render();
+    }
+    function scheduleServerDays() {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(loadServerDays, 300);
+    }
 
     function render() {
       document.getElementById("month-label").textContent = state.year + "년 " + state.month + "월";
@@ -434,6 +517,7 @@
           if (rec.extra != null) inner += '<span class="sub">초과 +' + rec.extra + "</span>";
           if (rec.short != null) inner += '<span class="sub">단축 -' + rec.short + "</span>";
           if (rec.total != null) inner += '<span class="sub">총 ' + rec.total + "</span>";
+          if (rec.store) inner += '<span class="sub">' + escText(rec.store) + "</span>";
         }
         body += '<button type="button" class="day' + (rec ? " on" : "") + (isToday ? " today" : "") + '" data-day="' + day + '">' + inner + "</button>";
       }
@@ -451,10 +535,10 @@
       const next = new Date(state.year, state.month - 1 + delta, 1);
       state.year = next.getFullYear();
       state.month = next.getMonth() + 1;
-      render();
+      loadServerDays();
     }
     phoneEl.oninput = () => { state.phone = phoneEl.value; document.getElementById("phone-error").textContent = ""; save(); };
-    workerEl.oninput = () => { state.worker = workerEl.value; save(); };
+    workerEl.oninput = () => { state.worker = workerEl.value; save(); scheduleServerDays(); };
     monthsEl.onchange = () => {
       state.months = Math.max(0, Math.floor(Number(monthsEl.value) || 0));
       save();
@@ -814,7 +898,7 @@
       document.getElementById("kakao").onclick = () => share("kakao");
       document.getElementById("sms").onclick = () => share("sms");
     };
-    render();
+    loadServerDays();
   </script>
 </body>
 </html>
