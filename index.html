@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>근무내역 V77</title>
+  <title>근무내역 V80</title>
   <script>
     (function () {
       var ua = navigator.userAgent || "";
@@ -103,12 +103,13 @@
     .day .type { color: var(--primary); font-size: 0.75rem; font-weight: 600; }
     .day .sub { color: var(--muted); font-size: 0.7rem; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .send {
-      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 0 1rem 1rem;
+      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 0.5rem; padding: 0 1rem 1rem;
     }
-    .send #open-send, .primary {
-      width: min(32rem, 100%); height: 3rem; border: 0; border-radius: 999px; background: var(--primary); color: var(--primary-fg);
-      font-weight: 600; cursor: pointer;
+    .send #open-pay, .send #open-send, .primary {
+      flex: 1; width: auto; max-width: 16rem; height: 3rem; border-radius: 999px; font-weight: 600; cursor: pointer;
     }
+    .send #open-send, .primary { border: 0; background: var(--primary); color: var(--primary-fg); }
+    .send #open-pay { border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
     .reset {
       width: min(32rem, 100%); height: 2.75rem; border: 1px solid var(--line); border-radius: 999px;
       background: var(--surface); color: var(--fg); font-weight: 600; cursor: pointer; margin: 0 0 0.75rem;
@@ -153,7 +154,7 @@
 <body>
   <main>
     <header>
-      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V77</span></h1>
+      <h1><span data-ko="근무내역">근무내역</span><span class="ver">V80</span></h1>
       <label class="field lang"><span data-ko="언어">언어</span>
         <select id="lang">
           <option value="">한국어</option>
@@ -185,7 +186,7 @@
     <p id="summary" class="summary"></p>
     <section class="cal"><div id="cal" class="grid"></div></section>
   </main>
-  <div class="send"><button id="open-send" type="button" data-ko="달력 이미지로 전송">달력 이미지로 전송</button></div>
+  <div class="send"><button id="open-pay" type="button">급여내역</button><button id="open-send" type="button" data-ko="달력 이미지로 전송">달력 이미지로 전송</button></div>
   <div id="day-sheet" class="sheet-bg hidden"></div>
   <div id="send-sheet" class="sheet-bg hidden"></div>
   <script>
@@ -699,7 +700,6 @@
     }
     function calcGross(map) {
       const base = 10320;
-      const probation = 9288;
       let eduMin = 0, eduRestSum = 0, probMin = 0, fullMin = 0, subMin = 0, extraMin = 0, shortMin = 0;
       Object.values(map).forEach((rec) => {
         if (!rec) return;
@@ -715,13 +715,20 @@
       });
       const lines = [];
       const eduPaid = Math.max(0, eduMin - eduRestSum);
-      if (eduPaid > 0) lines.push(["교육(2인 근무 교육만 해당)", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 수습 9,288원", won(eduPaid, probation)]);
-      if (probMin > 0) lines.push(["수습", formatMinutes(probMin) + " · 수습 9,288원", won(probMin, probation)]);
-      if (fullMin > 0) lines.push(["정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base)]);
-      if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base)]);
-      if (extraMin > 0) lines.push(["추가근무", formatMinutes(extraMin) + " · 시급 10,320원", won(extraMin, base)]);
-      if (shortMin > 0) lines.push(["단축근무", formatMinutes(shortMin) + " · 시급 10,320원", -won(shortMin, base)]);
-      const total = lines.reduce((sum, line) => sum + line[2], 0);
+      const eduPay = eduPaid > 0 ? won(eduPaid, base) : 0;
+      const probPay = probMin > 0 ? won(probMin, base) : 0;
+      if (eduPaid > 0) lines.push(["교육(2인 근무 교육만 해당)", formatMinutes(eduPaid) + " · 휴게 " + formatRest(eduRestSum) + " 제외 · 시급 10,320원", eduPay, false]);
+      if (probMin > 0) lines.push(["수습", formatMinutes(probMin) + " · 시급 10,320원", probPay, false]);
+      if (fullMin > 0) lines.push(["정식", formatMinutes(fullMin) + " · 시급 10,320원", won(fullMin, base), true]);
+      if (subMin > 0) lines.push(["대체근무", formatMinutes(subMin) + " · 시급 10,320원", won(subMin, base), true]);
+      if (extraMin > 0) lines.push(["추가근무", formatMinutes(extraMin) + " · 시급 10,320원", won(extraMin, base), true]);
+      if (shortMin > 0) lines.push(["단축근무", formatMinutes(shortMin) + " · 시급 10,320원", -won(shortMin, base), true]);
+      const probationBase = eduPay + probPay;
+      if (probationBase > 0) {
+        const names = [eduPay ? "교육" : "", probPay ? "수습" : ""].filter(Boolean).join("·");
+        lines.push(["수습 0.9", names + " " + probationBase.toLocaleString("ko-KR") + "원 × 0.9", Math.round(probationBase * 0.9), true]);
+      }
+      const total = lines.reduce((sum, line) => sum + (line[3] ? line[2] : 0), 0);
       return { lines, total };
     }
     function trunc10(value) { return Math.floor(Math.max(0, value) / 10) * 10; }
@@ -736,7 +743,7 @@
       const pay = calcGross(days());
       const take = takeHome(pay.total, state.months);
       const won = (value) => value.toLocaleString("ko-KR") + "원";
-      return [state.months + "개월차"].concat(pay.lines.map((line) => line[0] + " " + won(line[2]))).concat([
+      return [state.months + "개월차"].concat(pay.lines.map((line) => line[0] + " " + line[1] + " " + won(line[2]) + (line[3] ? "" : " (×0.9 전)"))).concat([
         "세전 " + won(pay.total),
         "국민연금 해당없음",
         "건강보험 해당없음",
@@ -751,9 +758,10 @@
       const pay = calcGross(days());
       const take = takeHome(pay.total, state.months);
       const won = (value) => value.toLocaleString("ko-KR") + "원";
-      const rows = pay.lines.map((line) =>
-        '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0">' + won(line[2]) + "</p></div>"
-      ).join("");
+      const rows = pay.lines.map((line) => {
+        const basis = line[3] === false;
+        return '<div class="row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:.5rem"><div><p style="font-weight:600;font-size:.875rem;margin:0">' + line[0] + (basis ? ' <span class="muted">×0.9 전</span>' : '') + '</p><p class="muted" style="margin:.15rem 0 0">' + line[1] + '</p></div><p style="font-weight:600;margin:0' + (basis ? ';color:#746c62' : '') + '">' + won(line[2]) + "</p></div>";
+      }).join("");
       const cuts = [
         ["국민연금", "해당없음"],
         ["건강보험", "해당없음"],
@@ -774,6 +782,7 @@
       document.getElementById("close-pay").onclick = () => sheet.classList.add("hidden");
       sheet.onclick = (event) => { if (event.target.id === "send-sheet") sheet.classList.add("hidden"); };
     }
+    document.getElementById("open-pay").onclick = () => showPay();
     document.getElementById("open-send").onclick = async () => {
       if (!validPhone(state.phone)) {
         const message = "점장 전화번호를 입력하세요.";
